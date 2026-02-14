@@ -99,8 +99,6 @@ func main() {
 			return
 		}
 
-		println(timestamp)
-
 		data, err := getFileStatusData()
 
 		if err != nil {
