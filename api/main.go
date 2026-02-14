@@ -100,7 +100,6 @@ func main() {
 		}
 
 		data, err := getFileStatusData()
-
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": err.Error(),
