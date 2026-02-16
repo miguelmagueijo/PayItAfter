@@ -1,13 +1,17 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,8 +26,25 @@ const FileDataName = "fileData.json"
 const DataPath = "./data/"
 
 var fileInUseError = errors.New("file is already in use")
+var badUserToken = errors.New("no valid token found")
+var userToken string
 var fileStatusInUse = false
 var appDataFileInUse = false
+
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func GenerateRandomString(s int) (string, error) {
+	b, err := GenerateRandomBytes(s)
+	return base64.URLEncoding.EncodeToString(b), err
+}
 
 func createStatusFile(data *FileStatus) (*FileStatus, error) {
 	file, err := os.Create(DataPath + FileDataName)
@@ -81,6 +102,35 @@ func getFileStatusData() (*FileStatus, error) {
 	return data, nil
 }
 
+func isValidAuth(authorization string) error {
+	if authorization == "" {
+		return badUserToken
+	}
+
+	parts := strings.Split(authorization, " ")
+	if len(parts) != 2 {
+		return badUserToken
+	}
+
+	if parts[0] != "PIA" || parts[1] != userToken {
+		return badUserToken
+	}
+
+	return nil
+}
+
+func authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err := isValidAuth(c.GetHeader("Authorization"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func main() {
 	router := gin.Default()
 
@@ -90,7 +140,10 @@ func main() {
 		})
 	})
 
-	router.GET("/last-sync", func(c *gin.Context) {
+	authProtected := router.Group("/")
+	authProtected.Use(authMiddleware())
+
+	authProtected.GET("/last-sync", func(c *gin.Context) {
 		data, err := getFileStatusData()
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
@@ -104,7 +157,7 @@ func main() {
 		})
 	})
 
-	router.GET("/sync-state/:timestamp", func(c *gin.Context) {
+	authProtected.GET("/sync-state/:timestamp", func(c *gin.Context) {
 		timestamp, err := strconv.ParseInt(c.Param("timestamp"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -131,7 +184,7 @@ func main() {
 		})
 	})
 
-	router.GET("/download", func(c *gin.Context) {
+	authProtected.GET("/download", func(c *gin.Context) {
 		if appDataFileInUse {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "the data file is being used already, please wait",
@@ -179,7 +232,7 @@ func main() {
 		c.JSON(http.StatusOK, appDataJson)
 	})
 
-	router.POST("/upload", func(c *gin.Context) {
+	authProtected.POST("/upload", func(c *gin.Context) {
 		if appDataFileInUse {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "a file is already being saved, please wait",
@@ -246,6 +299,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	userToken = os.Getenv("pia_token")
+	if userToken == "" {
+		userToken, err = GenerateRandomString(64)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	fmt.Println("user token:", userToken)
 
 	err = router.Run()
 
