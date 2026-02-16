@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +23,7 @@ const DataPath = "./data/"
 
 var fileInUseError = errors.New("file is already in use")
 var isFileInUse = false
+var isSavingFile = false
 
 func createStatusFile(data *FileStatus) (*FileStatus, error) {
 	file, err := os.Create(DataPath + FileDataName)
@@ -128,6 +131,75 @@ func main() {
 
 		c.JSON(http.StatusOK, gin.H{
 			"whoHasNewest": whoHasNewest,
+		})
+	})
+
+	router.POST("/upload", func(c *gin.Context) {
+		if isSavingFile {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "a file is already being saved, please wait",
+			})
+			return
+		}
+
+		isSavingFile = true
+		defer func() {
+			isSavingFile = false
+		}()
+
+		jsonData, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		fileStatus, err := getFileStatusData()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		savedFile, err := os.Create(DataPath + fileStatus.TargetFilename)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		_, err = savedFile.Write(jsonData)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		err = savedFile.Close()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		fileStatus.LastSync = time.Now().Unix()
+
+		_, err = createStatusFile(fileStatus)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":   "file uploaded",
+			"timestamp": fileStatus.LastSync,
 		})
 	})
 
