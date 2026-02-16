@@ -32,6 +32,8 @@ func createStatusFile(data *FileStatus) (*FileStatus, error) {
 		return nil, err
 	}
 
+	defer file.Close()
+
 	dataAsJson, err := json.Marshal(data)
 
 	if err != nil {
@@ -39,11 +41,6 @@ func createStatusFile(data *FileStatus) (*FileStatus, error) {
 	}
 
 	_, err = file.Write(dataAsJson)
-	if err != nil {
-		return nil, err
-	}
-
-	err = file.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -219,15 +216,9 @@ func main() {
 			return
 		}
 
-		_, err = savedFile.Write(jsonData)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": err.Error(),
-			})
-			return
-		}
+		defer savedFile.Close()
 
-		err = savedFile.Close()
+		_, err = savedFile.Write(jsonData)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": err.Error(),
