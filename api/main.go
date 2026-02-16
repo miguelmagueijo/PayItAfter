@@ -22,8 +22,8 @@ const FileDataName = "fileData.json"
 const DataPath = "./data/"
 
 var fileInUseError = errors.New("file is already in use")
-var isFileInUse = false
-var isSavingFile = false
+var fileStatusInUse = false
+var appDataFileInUse = false
 
 func createStatusFile(data *FileStatus) (*FileStatus, error) {
 	file, err := os.Create(DataPath + FileDataName)
@@ -52,13 +52,13 @@ func createStatusFile(data *FileStatus) (*FileStatus, error) {
 }
 
 func getFileStatusData() (*FileStatus, error) {
-	if isFileInUse {
+	if fileStatusInUse {
 		return nil, fileInUseError
 	}
 
-	isFileInUse = true
+	fileStatusInUse = true
 	defer func() {
-		isFileInUse = false
+		fileStatusInUse = false
 	}()
 	fileBytes, err := os.ReadFile(DataPath + FileDataName)
 
@@ -134,17 +134,65 @@ func main() {
 		})
 	})
 
+	router.GET("/download", func(c *gin.Context) {
+		if appDataFileInUse {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "the data file is being used already, please wait",
+			})
+			return
+		}
+
+		appDataFileInUse = true
+		defer func() {
+			appDataFileInUse = false
+		}()
+
+		fileStatus, err := getFileStatusData()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		appData, err := os.ReadFile(DataPath + fileStatus.TargetFilename)
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "the requested resource does not exist, please upload it first",
+			})
+			return
+		}
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		var appDataJson map[string]interface{}
+		err = json.Unmarshal(appData, &appDataJson)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, appDataJson)
+	})
+
 	router.POST("/upload", func(c *gin.Context) {
-		if isSavingFile {
+		if appDataFileInUse {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "a file is already being saved, please wait",
 			})
 			return
 		}
 
-		isSavingFile = true
+		appDataFileInUse = true
 		defer func() {
-			isSavingFile = false
+			appDataFileInUse = false
 		}()
 
 		jsonData, err := io.ReadAll(c.Request.Body)
