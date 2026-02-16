@@ -16,14 +16,14 @@ type FileStatus struct {
 	TargetFilename string `json:"targetFilename"`
 }
 
-const FILE_DATA_NAME = "fileData.json"
-const DATA_PATH = "./data/"
+const FileDataName = "fileData.json"
+const DataPath = "./data/"
 
 var fileInUseError = errors.New("file is already in use")
 var isFileInUse = false
 
 func createStatusFile(data *FileStatus) (*FileStatus, error) {
-	file, err := os.Create(DATA_PATH + FILE_DATA_NAME)
+	file, err := os.Create(DataPath + FileDataName)
 
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func getFileStatusData() (*FileStatus, error) {
 	defer func() {
 		isFileInUse = false
 	}()
-	fileBytes, err := os.ReadFile(DATA_PATH + FILE_DATA_NAME)
+	fileBytes, err := os.ReadFile(DataPath + FileDataName)
 
 	if os.IsNotExist(err) {
 		data := &FileStatus{}
