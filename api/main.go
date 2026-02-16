@@ -90,6 +90,20 @@ func main() {
 		})
 	})
 
+	router.GET("/last-sync", func(c *gin.Context) {
+		data, err := getFileStatusData()
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"timestamp": data.LastSync,
+		})
+	})
+
 	router.GET("/sync-state/:timestamp", func(c *gin.Context) {
 		timestamp, err := strconv.ParseInt(c.Param("timestamp"), 10, 64)
 		if err != nil {
