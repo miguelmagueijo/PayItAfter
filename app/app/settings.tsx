@@ -1,4 +1,4 @@
-import {Alert, Pressable, StyleSheet, Text, TextInput, View} from "react-native";
+import {Pressable, StyleSheet, Text, TextInput, ToastAndroid, View} from "react-native";
 import {useRef, useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
@@ -21,14 +21,20 @@ export default function Settings() {
 
 	function handleYuanValueSave() {
 		if (!yuanValue || isNaN(Number(yuanValue))) {
-			Alert.alert("Invalid yuan value");
+			ToastAndroid.show("Invalid Yuan value", ToastAndroid.SHORT);
+			return;
+		}
+
+		const yuanNumber = Number(yuanValue);
+		if (yuanNumber < 1) {
+			ToastAndroid.show("Yuan value must be 1 or greater", ToastAndroid.SHORT);
 			return;
 		}
 
 		yuanInputRef?.current?.blur();
 
 		db.runSync("UPDATE configuration SET value = ? WHERE id = 'yuan_value'", yuanValue);
-		Alert.alert("Yuan value changed with success!");
+		ToastAndroid.show("Yuan value changed", ToastAndroid.SHORT);
 	}
 
 	useFocusEffect(() => {
