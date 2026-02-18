@@ -1,5 +1,5 @@
 import {Alert, Pressable, StyleSheet, Text, TextInput, View} from "react-native";
-import {useState} from "react";
+import {useRef, useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
@@ -7,6 +7,7 @@ import {useFocusEffect} from "expo-router";
 export default function Settings() {
 	const [yuanValue, setYuanValue] = useState<string>();
 	const db = useSQLiteContext();
+	const yuanInputRef = useRef<TextInput>(null);
 
 	function loadAndSetYuanValue() {
 		const yuanValueRow = db.getFirstSync<{
@@ -23,6 +24,11 @@ export default function Settings() {
 			Alert.alert("Invalid yuan value");
 			return;
 		}
+
+		yuanInputRef?.current?.blur();
+
+		db.runSync("UPDATE configuration SET value = ? WHERE id = 'yuan_value'", yuanValue);
+		Alert.alert("Yuan value changed with success!");
 	}
 
 	useFocusEffect(() => {
@@ -59,6 +65,7 @@ export default function Settings() {
 				<Text style={{color: "white", fontSize: 26, fontWeight: "bold"}}>=</Text>
 				<View style={styles.moneyWrapper}>
 					<TextInput
+						ref={yuanInputRef}
 						style={styles.yuanInput}
 						inputMode="decimal"
 						placeholder="0"
