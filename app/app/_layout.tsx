@@ -2,6 +2,7 @@ import {DarkTheme, ThemeProvider} from "@react-navigation/native";
 import {GestureHandlerRootView} from "react-native-gesture-handler";
 import {Drawer} from "expo-router/drawer";
 import {SQLiteDatabase, SQLiteProvider} from "expo-sqlite";
+import {Banknote, Settings} from "lucide-react-native/icons";
 
 export async function handleDbInit(db: SQLiteDatabase) {
 	const DB_VERSION = 1;
@@ -36,15 +37,18 @@ export default function RootLayout() {
 			<SQLiteProvider databaseName="data.db" onInit={handleDbInit}>
 				<GestureHandlerRootView style={{flex: 1}}>
 					<Drawer screenOptions={{
-						drawerActiveBackgroundColor: "green"
+						drawerActiveBackgroundColor: "white",
+						drawerHideStatusBarOnOpen: true
 					}}>
 						<Drawer.Screen name="index" options={{
-							drawerLabel: "Home",
-							title: "Pay It After"
+							drawerLabel: "Payments",
+							title: "Payments",
+							drawerIcon: ({color, size}) => (<Banknote color={color} size={size}/>)
 						}}/>
 						<Drawer.Screen name="settings" options={{
 							drawerLabel: "Settings",
-							title: "App settings"
+							title: "App settings",
+							drawerIcon: ({color, size}) => (<Settings color={color} size={size}/>)
 						}}/>
 					</Drawer>
 				</GestureHandlerRootView>
