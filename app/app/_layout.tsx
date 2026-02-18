@@ -3,6 +3,8 @@ import {GestureHandlerRootView} from "react-native-gesture-handler";
 import {Drawer} from "expo-router/drawer";
 import {SQLiteDatabase, SQLiteProvider} from "expo-sqlite";
 import {Banknote, Settings} from "lucide-react-native/icons";
+import {DrawerContentComponentProps, DrawerContentScrollView, DrawerItemList} from "@react-navigation/drawer";
+import {Text, View} from "react-native";
 
 export async function handleDbInit(db: SQLiteDatabase) {
 	const DB_VERSION = 1;
@@ -31,15 +33,31 @@ export async function handleDbInit(db: SQLiteDatabase) {
 	await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);
 }
 
+function CustomDrawerContent(props: DrawerContentComponentProps) {
+	return (
+		<DrawerContentScrollView {...props}>
+			<View style={{marginTop: 10, marginBottom: 20}}>
+				<Text style={{textAlign: "center", fontSize: 30, color: "white", fontWeight: "bold"}}>
+					Pay It After
+				</Text>
+			</View>
+			<DrawerItemList {...props}/>
+		</DrawerContentScrollView>
+	);
+}
+
 export default function RootLayout() {
 	return (
 		<ThemeProvider value={DarkTheme}>
 			<SQLiteProvider databaseName="data.db" onInit={handleDbInit}>
 				<GestureHandlerRootView style={{flex: 1}}>
-					<Drawer screenOptions={{
-						drawerActiveBackgroundColor: "white",
-						drawerHideStatusBarOnOpen: true
-					}}>
+					<Drawer
+						screenOptions={{
+							drawerActiveBackgroundColor: "white",
+							drawerHideStatusBarOnOpen: true
+						}}
+						drawerContent={CustomDrawerContent}
+					>
 						<Drawer.Screen name="index" options={{
 							drawerLabel: "Payments",
 							title: "Payments",
