@@ -1,7 +1,8 @@
-import {Pressable, StyleSheet, Text, TextInput, View} from "react-native";
-import {useEffect, useState} from "react";
+import {Alert, Pressable, StyleSheet, Text, TextInput, View} from "react-native";
+import {useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
+import {useFocusEffect} from "expo-router";
 
 export default function Settings() {
 	const [yuanValue, setYuanValue] = useState<string>();
@@ -17,7 +18,14 @@ export default function Settings() {
 		}
 	}
 
-	useEffect(() => {
+	function handleYuanValueSave() {
+		if (!yuanValue || isNaN(Number(yuanValue))) {
+			Alert.alert("Invalid yuan value");
+			return;
+		}
+	}
+
+	useFocusEffect(() => {
 		loadAndSetYuanValue();
 	});
 
@@ -67,7 +75,7 @@ export default function Settings() {
 						},
 						styles.saveButton,
 					]}
-					onPress={() => console.log("Press")}
+					onPress={handleYuanValueSave}
 				>
 					<Check color={"white"} size={28}/>
 				</Pressable>
