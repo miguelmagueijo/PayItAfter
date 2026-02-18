@@ -3,6 +3,8 @@ import {useRef, useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
+import {COLORS} from "@/app/colors";
+import {Equal} from "lucide-react-native/icons";
 
 export default function Settings() {
 	const [yuanValue, setYuanValue] = useState<string>();
@@ -43,7 +45,7 @@ export default function Settings() {
 
 	return (
 		<View style={{padding: 15}}>
-			<Text style={{color: "white", fontSize: 14, fontWeight: "bold", opacity: 0.5}}>CONVERSION RATE</Text>
+			<Text style={{color: "#f8eaef", fontSize: 14, fontWeight: "bold", opacity: 0.5}}>CONVERSION RATE</Text>
 			<View
 				style={{
 					display: "flex",
@@ -60,7 +62,7 @@ export default function Settings() {
 							textAlign: "center",
 							fontSize: 20,
 							fontWeight: "bold",
-							color: "white"
+							color: "#f8eaef"
 						}}
 						inputMode="decimal"
 						value={"1"}
@@ -68,7 +70,7 @@ export default function Settings() {
 					/>
 					<Text style={styles.moneySymbol}>€</Text>
 				</View>
-				<Text style={{color: "white", fontSize: 26, fontWeight: "bold"}}>=</Text>
+				<Equal strokeWidth={4} color={COLORS.text}/>
 				<View style={styles.moneyWrapper}>
 					<TextInput
 						ref={yuanInputRef}
@@ -84,13 +86,13 @@ export default function Settings() {
 				<Pressable
 					style={({pressed}) => [
 						{
-							backgroundColor: pressed ? "#c02b0e" : "#f9793e",
+							backgroundColor: pressed ? COLORS.accent : COLORS.brighterPrimary,
 						},
 						styles.saveButton,
 					]}
 					onPress={handleYuanValueSave}
 				>
-					<Check color={"white"} size={28}/>
+					<Check size={24} strokeWidth={4}/>
 				</Pressable>
 			</View>
 		</View>
@@ -100,7 +102,7 @@ export default function Settings() {
 const styles = StyleSheet.create({
 	moneySymbol: {
 		display: "flex",
-		color: "white",
+		color: COLORS.text,
 		fontSize: 20,
 		fontWeight: "bold",
 		paddingHorizontal: 15,
@@ -110,8 +112,8 @@ const styles = StyleSheet.create({
 		textAlign: "center",
 		fontSize: 20,
 		fontWeight: "bold",
-		backgroundColor: "#191c1c",
-		color: "white"
+		backgroundColor: COLORS.dark,
+		color: COLORS.text
 	},
 	moneyWrapper: {
 		flex: 1,
@@ -120,8 +122,8 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		borderWidth: 4,
 		borderRadius: 5,
-		borderColor: "#282928",
-		backgroundColor: "rgba(201, 201, 201, 0.2)",
+		borderColor: COLORS.brightBackground,
+		backgroundColor: COLORS.brightBackground,
 		height: 55
 	},
 	saveButton: {
@@ -129,6 +131,6 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		height: 55,
 		borderRadius: 5,
-		padding: 10,
+		padding: 15,
 	}
 })

@@ -2,9 +2,10 @@ import {DarkTheme, ThemeProvider} from "@react-navigation/native";
 import {GestureHandlerRootView} from "react-native-gesture-handler";
 import {Drawer} from "expo-router/drawer";
 import {SQLiteDatabase, SQLiteProvider} from "expo-sqlite";
-import {Banknote, Settings} from "lucide-react-native/icons";
+import {House, Settings} from "lucide-react-native/icons";
 import {DrawerContentComponentProps, DrawerContentScrollView, DrawerItemList} from "@react-navigation/drawer";
 import {Text, View} from "react-native";
+import {COLORS} from "@/app/colors";
 
 export async function handleDbInit(db: SQLiteDatabase) {
 	const DB_VERSION = 1;
@@ -37,7 +38,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 	return (
 		<DrawerContentScrollView {...props}>
 			<View style={{marginTop: 10, marginBottom: 20}}>
-				<Text style={{textAlign: "center", fontSize: 30, color: "white", fontWeight: "bold"}}>
+				<Text style={{textAlign: "center", fontSize: 30, color: "#f8eaef", fontWeight: "bold"}}>
 					Pay It After
 				</Text>
 			</View>
@@ -53,19 +54,23 @@ export default function RootLayout() {
 				<GestureHandlerRootView style={{flex: 1}}>
 					<Drawer
 						screenOptions={{
-							drawerActiveBackgroundColor: "white",
+							drawerActiveBackgroundColor: COLORS.dark,
+							drawerActiveTintColor: COLORS.text,
+							drawerStyle: {backgroundColor: COLORS.background},
+							headerTintColor: COLORS.text,
+							headerStyle: {backgroundColor: COLORS.background},
 							drawerHideStatusBarOnOpen: true
 						}}
 						drawerContent={CustomDrawerContent}
 					>
 						<Drawer.Screen name="index" options={{
-							drawerLabel: "Payments",
-							title: "Payments",
-							drawerIcon: ({color, size}) => (<Banknote color={color} size={size}/>)
+							drawerLabel: "Home",
+							title: "Home",
+							drawerIcon: ({color, size}) => (<House color={color} size={size}/>)
 						}}/>
 						<Drawer.Screen name="settings" options={{
 							drawerLabel: "Settings",
-							title: "App settings",
+							title: "Settings",
 							drawerIcon: ({color, size}) => (<Settings color={color} size={size}/>)
 						}}/>
 					</Drawer>

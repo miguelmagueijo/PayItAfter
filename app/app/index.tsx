@@ -1,42 +1,51 @@
-import {Text, View} from "react-native";
+import {Pressable, Text, View} from "react-native";
+import {Plus} from "lucide-react-native/icons";
+import {COLORS} from "@/app/colors";
 
 export default function Index() {
 	return (
-		<View>
-			<View style={{padding: 10, margin: 10}}>
-				<Text style={{
-					fontWeight: "bold",
-					color: "white",
-					fontSize: 12,
-					marginBottom: 5,
-					opacity: 0.5
-				}}>Overall</Text>
+		<View style={{padding: 10, margin: 10}}>
+			<View style={{
+				display: "flex",
+				flexDirection: "row",
+				backgroundColor: COLORS.brightBackground,
+				borderRadius: 5,
+				paddingVertical: 25
+			}}>
+				<View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
+					<Text style={{color: COLORS.text, fontWeight: "bold", fontSize: 20}}>200039.23 ¥</Text>
+					<Text style={{color: COLORS.primary, fontSize: 12, fontWeight: "bold"}}>YUAN</Text>
+				</View>
 				<View style={{
-					display: "flex",
-					flexDirection: "row",
-					backgroundColor: "#1f1f1f",
-					borderRadius: 5,
-					paddingVertical: 25
-				}}>
-					<View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
-						<Text style={{color: "white", fontSize: 10, marginBottom: 2.5}}>YUAN</Text>
-						<Text style={{color: "white", fontWeight: "bold", fontSize: 16}}>2039.23 ¥</Text>
-					</View>
-					<View style={{
-						borderColor: "#4d5156",
-						width: 0,
-						height: 50,
-						borderWidth: 2,
-						borderRadius: 99,
-						marginHorizontal: 2.5
-					}}/>
-					<View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
-						<Text style={{color: "white", fontSize: 10, marginBottom: 2.5}}>EUR</Text>
-						<Text style={{color: "white", fontWeight: "bold", fontSize: 16}}>400.32 €</Text>
-					</View>
+					borderColor: COLORS.softerSecondary,
+					width: 0,
+					height: 50,
+					borderWidth: 2,
+					borderRadius: 99,
+					marginHorizontal: 2.5
+				}}/>
+				<View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
+					<Text style={{color: COLORS.text, fontWeight: "bold", fontSize: 20}}>400.32 €</Text>
+					<Text style={{color: COLORS.primary, fontSize: 12}}>EUR</Text>
 				</View>
 			</View>
-			<Text>Testing out</Text>
+			<View style={{marginTop: 15, flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
+				<Text style={{color: COLORS.text, fontSize: 26, fontWeight: "bold"}}>
+					Payments
+				</Text>
+				<Pressable
+					style={{
+						backgroundColor: COLORS.brighterPrimary,
+						alignItems: "center",
+						borderRadius: 5,
+						flexDirection: "row",
+						paddingHorizontal: 5,
+						paddingVertical: 5,
+						gap: 3
+					}}>
+					<Plus strokeWidth={4}/>
+				</Pressable>
+			</View>
 		</View>
 	);
 }
