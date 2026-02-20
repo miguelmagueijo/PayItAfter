@@ -3,7 +3,7 @@ import {useRef, useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
-import {COLORS} from "@/app/colors";
+import {Colors} from "@/constants/theme";
 import {Equal} from "lucide-react-native/icons";
 
 export default function Settings() {
@@ -70,7 +70,7 @@ export default function Settings() {
 					/>
 					<Text style={styles.moneySymbol}>€</Text>
 				</View>
-				<Equal strokeWidth={4} color={COLORS.text}/>
+				<Equal strokeWidth={4} color={Colors.text}/>
 				<View style={styles.moneyWrapper}>
 					<TextInput
 						ref={yuanInputRef}
@@ -86,7 +86,7 @@ export default function Settings() {
 				<Pressable
 					style={({pressed}) => [
 						{
-							backgroundColor: pressed ? COLORS.accent : COLORS.brighterPrimary,
+							backgroundColor: pressed ? Colors.accent : Colors.brighterPrimary,
 						},
 						styles.saveButton,
 					]}
@@ -102,7 +102,7 @@ export default function Settings() {
 const styles = StyleSheet.create({
 	moneySymbol: {
 		display: "flex",
-		color: COLORS.text,
+		color: Colors.text,
 		fontSize: 20,
 		fontWeight: "bold",
 		paddingHorizontal: 15,
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
 		textAlign: "center",
 		fontSize: 20,
 		fontWeight: "bold",
-		backgroundColor: COLORS.dark,
-		color: COLORS.text
+		backgroundColor: Colors.dark,
+		color: Colors.text
 	},
 	moneyWrapper: {
 		flex: 1,
@@ -122,8 +122,8 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		borderWidth: 4,
 		borderRadius: 5,
-		borderColor: COLORS.brightBackground,
-		backgroundColor: COLORS.brightBackground,
+		borderColor: Colors.brightBackground,
+		backgroundColor: Colors.brightBackground,
 		height: 55
 	},
 	saveButton: {

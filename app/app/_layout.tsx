@@ -5,7 +5,7 @@ import {SQLiteDatabase, SQLiteProvider} from "expo-sqlite";
 import {House, Settings} from "lucide-react-native/icons";
 import {DrawerContentComponentProps, DrawerContentScrollView, DrawerItemList} from "@react-navigation/drawer";
 import {Text, View} from "react-native";
-import {COLORS} from "@/app/colors";
+import {Colors} from "@/constants/theme";
 
 export async function handleDbInit(db: SQLiteDatabase) {
 	const DB_VERSION = 1;
@@ -54,11 +54,11 @@ export default function RootLayout() {
 				<GestureHandlerRootView style={{flex: 1}}>
 					<Drawer
 						screenOptions={{
-							drawerActiveBackgroundColor: COLORS.dark,
-							drawerActiveTintColor: COLORS.text,
-							drawerStyle: {backgroundColor: COLORS.background},
-							headerTintColor: COLORS.text,
-							headerStyle: {backgroundColor: COLORS.background},
+							drawerActiveBackgroundColor: Colors.dark,
+							drawerActiveTintColor: Colors.text,
+							drawerStyle: {backgroundColor: Colors.background},
+							headerTintColor: Colors.text,
+							headerStyle: {backgroundColor: Colors.background},
 							drawerHideStatusBarOnOpen: true
 						}}
 						drawerContent={CustomDrawerContent}
