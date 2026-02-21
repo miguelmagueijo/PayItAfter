@@ -1,5 +1,5 @@
-import {Pressable, StyleSheet, Text, TextInput, ToastAndroid, View} from "react-native";
-import {useRef, useState} from "react";
+import {Keyboard, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View} from "react-native";
+import {useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
@@ -9,7 +9,6 @@ import {Equal} from "lucide-react-native/icons";
 export default function Settings() {
 	const [yuanValue, setYuanValue] = useState<string>();
 	const db = useSQLiteContext();
-	const yuanInputRef = useRef<TextInput>(null);
 
 	function loadAndSetYuanValue() {
 		const yuanValueRow = db.getFirstSync<{
@@ -33,7 +32,7 @@ export default function Settings() {
 			return;
 		}
 
-		yuanInputRef?.current?.blur();
+		Keyboard.dismiss();
 
 		db.runSync("UPDATE configuration SET value = ? WHERE id = 'yuan_value'", yuanValue);
 		ToastAndroid.show("Yuan value changed", ToastAndroid.SHORT);
@@ -73,7 +72,6 @@ export default function Settings() {
 				<Equal strokeWidth={4} color={Colors.text}/>
 				<View style={styles.moneyWrapper}>
 					<TextInput
-						ref={yuanInputRef}
 						style={styles.yuanInput}
 						inputMode="decimal"
 						placeholder="0"
