@@ -385,6 +385,13 @@ export default function Index() {
 					<Text style={{color: Colors.primary, fontSize: 12}}>EUR</Text>
 				</View>
 			</View>
+			{yuanValue &&
+                <View>
+                    <Text style={{color: Colors.text, fontSize: 10, opacity: 0.5, textAlign: "right", marginTop: 2}}>
+                        Conversion rate: 1€ = {yuanValue}¥
+                    </Text>
+                </View>
+			}
 			<View style={{
 				marginTop: 15,
 				flexDirection: "row",
