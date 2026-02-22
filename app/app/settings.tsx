@@ -4,21 +4,12 @@ import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
 import {Colors} from "@/constants/theme";
+import {loadAndSetYuanValue} from "@/constants/helpers/db";
 import {Equal} from "lucide-react-native/icons";
 
 export default function Settings() {
 	const [yuanValue, setYuanValue] = useState<string>();
 	const db = useSQLiteContext();
-
-	function loadAndSetYuanValue() {
-		const yuanValueRow = db.getFirstSync<{
-			value: string
-		}>("SELECT value FROM configuration WHERE id = 'yuan_value'");
-
-		if (yuanValueRow && !isNaN(Number(yuanValueRow.value))) {
-			setYuanValue(yuanValueRow.value);
-		}
-	}
 
 	function handleYuanValueSave() {
 		if (!yuanValue || isNaN(Number(yuanValue))) {
@@ -39,7 +30,7 @@ export default function Settings() {
 	}
 
 	useFocusEffect(() => {
-		loadAndSetYuanValue();
+		loadAndSetYuanValue(db, setYuanValue);
 	});
 
 	return (
