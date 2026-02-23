@@ -16,16 +16,16 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import {useEffect, useRef, useState} from "react";
 import {DateTimePickerAndroid} from "@react-native-community/datetimepicker";
 import {Swipeable} from "react-native-gesture-handler";
-import {Checkbox} from "expo-checkbox";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
-import {loadAndSetYuanValue} from "@/constants/helpers/db";
+import {loadAndSetYuanValue, PAYMENT_TYPE} from "@/constants/helpers/db";
+import {LinearGradient} from "expo-linear-gradient";
 
 type PaymentData = {
 	id: number;
 	title: string;
 	value: number;
-	by_user: boolean;
+	type: number;
 	made_on: Date;
 }
 
@@ -78,6 +78,23 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 		</Pressable>
 	)
 
+	//paymentCardBgColor = "#0c2806";
+	//paymentCardBgColor = "#280606";
+	let paymentCardBgColor: string;
+	switch (payment.type) {
+		case PAYMENT_TYPE.USER:
+			paymentCardBgColor = Colors.paymentTypeUser;
+			break;
+		case PAYMENT_TYPE.USER_SPLIT:
+			paymentCardBgColor = Colors.paymentTypeUserSplit;
+			break;
+		case PAYMENT_TYPE.FRIEND_SPLIT:
+			paymentCardBgColor = Colors.paymentTypeFriendSplit;
+			break;
+		default:
+			paymentCardBgColor = Colors.accent;
+	}
+
 	return (
 		<Swipeable overshootRight={false} overshootLeft={false} ref={swipeRef}
 				   renderLeftActions={LeftAction}
@@ -85,34 +102,37 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 				   friction={2}
 				   containerStyle={{
 					   borderRadius: 5,
-					   backgroundColor: "#0c2806",
-					   overflow: "hidden"
-				   }}
-				   childrenContainerStyle={{
-					   backgroundColor: payment.by_user ? "#0c2806" : "#280606",
-					   padding: 15,
 					   width: "100%",
-					   flexDirection: "row",
-					   alignItems: "center",
-					   justifyContent: "space-between",
-					   gap: 10,
-					   borderRadius: 5,
 				   }}
 		>
-			<View style={{flex: 1}}>
-				<Text style={{fontSize: 16, fontWeight: "bold", lineHeight: 16, color: Colors.text}}>
-					{payment.title}
-				</Text>
-				<Text style={{fontSize: 12, color: Colors.text}}>
-					{payment.made_on.toLocaleDateString()} {getCleanHours(payment.made_on)}
-				</Text>
-			</View>
-			<View style={{flexDirection: "row", alignItems: "flex-end", gap: 2.5}}>
-				<Text style={{fontSize: 18, fontWeight: "bold", color: Colors.text}}>
-					{payment.value}
-				</Text>
-				<Text style={{fontSize: 12, color: Colors.text}}>¥</Text>
-			</View>
+			<LinearGradient
+				colors={[paymentCardBgColor, Colors.softBackground]}
+				style={{
+					padding: 15, flex: 1, flexDirection: "row",
+					alignItems: "center",
+					justifyContent: "space-between",
+					gap: 10,
+				}}
+				dither={true}
+				locations={[0, 0.85]}
+				start={{x: 0, y: 0}}
+				end={{x: 1, y: 0}}
+			>
+				<View style={{flex: 1}}>
+					<Text style={{fontSize: 16, fontWeight: "bold", lineHeight: 16, color: Colors.text}}>
+						{payment.title}
+					</Text>
+					<Text style={{fontSize: 12, color: Colors.text}}>
+						{payment.made_on.toLocaleDateString()} {getCleanHours(payment.made_on)}
+					</Text>
+				</View>
+				<View style={{flexDirection: "row", alignItems: "flex-end", gap: 2.5}}>
+					<Text style={{fontSize: 18, fontWeight: "bold", color: Colors.text}}>
+						{payment.value}
+					</Text>
+					<Text style={{fontSize: 12, color: Colors.text}}>¥</Text>
+				</View>
+			</LinearGradient>
 		</Swipeable>
 	);
 }
@@ -125,7 +145,7 @@ export default function Index() {
 	const [paymentDate, setPaymentDate] = useState(new Date());
 	const [paymentValue, setPaymentValue] = useState("");
 	const [paymentTitle, setPaymentTitle] = useState("");
-	const [paymentByUser, setPaymentByUser] = useState(false);
+	const [paymentType, setPaymentType] = useState<number>(PAYMENT_TYPE.USER);
 	const [totalSpent, setTotalSpent] = useState(0);
 	const [yuanValue, setYuanValue] = useState<string>();
 	const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -148,13 +168,13 @@ export default function Index() {
 	function handleModalOpen(recordToEdit: PaymentData | undefined = undefined) {
 		if (!recordToEdit) {
 			setPaymentTitle("");
-			setPaymentByUser(false);
+			setPaymentType(PAYMENT_TYPE.USER);
 			setPaymentValue("");
 			setPaymentDate(new Date());
 		} else {
 			setPaymentTitle(recordToEdit.title);
-			setPaymentByUser(recordToEdit.by_user);
 			setPaymentValue(String(recordToEdit.value));
+			setPaymentType(recordToEdit.type);
 			setPaymentDate(recordToEdit.made_on);
 		}
 
@@ -175,14 +195,14 @@ export default function Index() {
 		}
 
 		if (!selectedPayment) {
-			await db.runAsync("INSERT INTO payment (title, total, paid_by_user, made_on) VALUES (?, ?, ?, ?)",
-				paymentTitle, paymentValueNumber, paymentByUser, paymentDate.getTime());
+			await db.runAsync("INSERT INTO payment (title, total, type, made_on) VALUES (?, ?, ?, ?)",
+				paymentTitle, paymentValueNumber, paymentType, paymentDate.getTime());
 			ToastAndroid.show("Payment created", ToastAndroid.SHORT);
 			setModalVisible(false);
 			fetchPayments();
 		} else {
-			await db.runAsync("UPDATE payment SET title = ?, total = ?, paid_by_user = ?, made_on = ? WHERE id = ?",
-				paymentTitle, paymentValueNumber, paymentByUser, paymentDate.getTime(), selectedPayment?.id);
+			await db.runAsync("UPDATE payment SET title = ?, total = ?, type = ?, made_on = ? WHERE id = ?",
+				paymentTitle, paymentValueNumber, paymentType, paymentDate.getTime(), selectedPayment?.id);
 			ToastAndroid.show("Payment updated", ToastAndroid.SHORT);
 			setModalVisible(false);
 			fetchPayments();
@@ -194,7 +214,7 @@ export default function Index() {
 			return;
 		}
 
-		let result = db.getAllSync<PaymentData>("SELECT id, title, total AS value, paid_by_user AS by_user, made_on FROM payment ORDER BY made_on DESC");
+		let result = db.getAllSync<PaymentData>("SELECT id, title, total AS value, type, made_on FROM payment ORDER BY made_on DESC");
 
 		let totalSpent = 0;
 		result = result.map((r) => {
@@ -344,15 +364,55 @@ export default function Index() {
 								</Text>
 							</View>
 						</View>
-						<View style={{marginTop: 20, flexDirection: "row", gap: 10, alignItems: "center"}}>
-							<Checkbox value={paymentByUser} onValueChange={setPaymentByUser}
-									  color={Colors.softerSecondary} style={{height: 20, width: 20}}/>
-							<Pressable onPress={() => setPaymentByUser(!paymentByUser)}>
-								<Text style={{color: Colors.text, fontSize: 16}}>Paid by me</Text>
+						<View style={{
+							marginTop: 20,
+							flexDirection: "row",
+							gap: 10,
+							justifyContent: "space-between",
+							alignItems: "center"
+						}}>
+							<Pressable onPress={() => setPaymentType(PAYMENT_TYPE.USER)}
+									   style={{
+										   flex: 1,
+										   padding: 10,
+										   backgroundColor: paymentType === PAYMENT_TYPE.USER ? Colors.paymentTypeUser : Colors.background,
+										   borderWidth: 2,
+										   borderRadius: 5,
+										   borderColor: Colors.paymentTypeUser,
+									   }}>
+								<Text style={{color: Colors.text, textAlign: "center", fontWeight: "bold"}}>
+									Only mine
+								</Text>
+							</Pressable>
+							<Pressable onPress={() => setPaymentType(PAYMENT_TYPE.USER_SPLIT)}
+									   style={{
+										   flex: 1,
+										   padding: 10,
+										   backgroundColor: paymentType === PAYMENT_TYPE.USER_SPLIT ? Colors.paymentTypeUserSplit : Colors.background,
+										   borderWidth: 2,
+										   borderRadius: 5,
+										   borderColor: Colors.paymentTypeUserSplit,
+									   }}>
+								<Text style={{color: Colors.text, textAlign: "center", fontWeight: "bold"}}>
+									I paid
+								</Text>
+							</Pressable>
+							<Pressable onPress={() => setPaymentType(PAYMENT_TYPE.FRIEND_SPLIT)}
+									   style={{
+										   flex: 1,
+										   padding: 10,
+										   backgroundColor: paymentType === PAYMENT_TYPE.FRIEND_SPLIT ? Colors.paymentTypeFriendSplit : Colors.background,
+										   borderWidth: 2,
+										   borderRadius: 5,
+										   borderColor: Colors.paymentTypeFriendSplit,
+									   }}>
+								<Text style={{color: Colors.text, textAlign: "center", fontWeight: "bold"}}>
+									Friend paid
+								</Text>
 							</Pressable>
 						</View>
 						<Pressable style={({pressed}) => [{
-							marginTop: 50,
+							marginTop: 35,
 							backgroundColor: pressed ? Colors.accent : Colors.primary,
 							borderRadius: 5,
 							padding: 10,
@@ -410,6 +470,9 @@ export default function Index() {
                     </Text>
                 </View>
 			}
+			<View>
+				<Text>You currently owe / are owed</Text>
+			</View>
 			<View style={{
 				marginTop: 15,
 				flexDirection: "row",

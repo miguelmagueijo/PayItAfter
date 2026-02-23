@@ -9,3 +9,9 @@ export function loadAndSetYuanValue(db: SQLiteDatabase, setYuanValue: (value: st
 		setYuanValue(yuanValueRow.value);
 	}
 }
+
+export const PAYMENT_TYPE = {
+	USER: 0, // Paid by user only, friend doesn't pay anything
+	USER_SPLIT: 1, // Paid by user, friend has to pay half
+	FRIEND_SPLIT: 2, // Paid by friend, user has to pay half
+} as const;

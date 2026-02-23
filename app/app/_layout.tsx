@@ -8,7 +8,7 @@ import {Text, View} from "react-native";
 import {Colors} from "@/constants/theme";
 
 export async function handleDbInit(db: SQLiteDatabase) {
-	const DB_VERSION = 1;
+	const DB_VERSION = 2;
 
 	let result = await db.getFirstAsync<{ user_version: number }>(
 		"PRAGMA user_version"
@@ -23,11 +23,12 @@ export async function handleDbInit(db: SQLiteDatabase) {
 		return;
 	}
 
+	// Payment types: 0 - Paid by user, only for user; 1 - Paid by user, split with friend, 2 - Paid by friend, split with user
 	db.withTransactionSync(() => {
 		db.execSync("DROP TABLE IF EXISTS configuration");
 		db.execSync("DROP TABLE IF EXISTS payment");
 		db.execSync("CREATE TABLE configuration (id TEXT PRIMARY KEY, value TEXT);");
-		db.execSync("CREATE TABLE payment (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, total REAL NOT NULL, paid_by_user BOOLEAN NOT NULL DEFAULT FALSE, made_on TIMESTAMP);");
+		db.execSync("CREATE TABLE payment (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, total REAL NOT NULL, type INTEGER NOT NULL DEFAULT 0, made_on TIMESTAMP);");
 		db.execSync("INSERT INTO configuration VALUES ('yuan_value', '7.8');");
 	});
 

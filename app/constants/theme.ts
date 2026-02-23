@@ -13,4 +13,7 @@ export const Colors = {
 	softBackground: "#25141d",
 	brightBackground: "#2a0d0f",
 	other: "#1f0e13",
+	paymentTypeUser: "#121f59",
+	paymentTypeUserSplit: "#104720",
+	paymentTypeFriendSplit: "#591212",
 } as const;
