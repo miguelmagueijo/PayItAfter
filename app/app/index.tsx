@@ -442,7 +442,8 @@ export default function Index() {
 				flexDirection: "row",
 				backgroundColor: Colors.brightBackground,
 				borderRadius: 5,
-				paddingVertical: 25
+				paddingVertical: 20,
+				alignItems: "center"
 			}}>
 				<View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
 					<Text style={{color: Colors.text, fontWeight: "bold", fontSize: 20}}>{totalSpent} ¥</Text>
@@ -451,7 +452,7 @@ export default function Index() {
 				<View style={{
 					borderColor: Colors.softerSecondary,
 					width: 0,
-					height: 50,
+					height: "75%",
 					borderWidth: 2,
 					borderRadius: 99,
 					marginHorizontal: 2.5
