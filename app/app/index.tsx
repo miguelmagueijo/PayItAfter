@@ -199,6 +199,8 @@ export default function Index() {
 		let totalSpent = 0;
 		result = result.map((r) => {
 			r.made_on = new Date(r.made_on);
+			// @ts-ignore
+			r.by_user = r.by_user === "true";
 			totalSpent += r.value;
 			return r
 		});
@@ -359,7 +361,9 @@ export default function Index() {
 							justifyContent: "center",
 							gap: 5
 						}]} onPress={handleModalSubmit}>
-							<Plus strokeWidth={4} size={18} color={Colors.background}/>
+							{!selectedPayment ? <Plus strokeWidth={4} size={18} color={Colors.background}/> :
+								<Pencil strokeWidth={4} size={18} color={Colors.background}/>}
+
 							<Text style={{
 								color: Colors.background,
 								fontWeight: "bold",
