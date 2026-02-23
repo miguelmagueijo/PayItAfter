@@ -1,5 +1,4 @@
 import {
-	Alert,
 	FlatList,
 	Modal,
 	Pressable,
@@ -14,7 +13,7 @@ import {
 import {Pencil, Plus, Trash} from "lucide-react-native/icons";
 import {Colors} from "@/constants/theme";
 import {SafeAreaView} from "react-native-safe-area-context";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {DateTimePickerAndroid} from "@react-native-community/datetimepicker";
 import {Swipeable} from "react-native-gesture-handler";
 import {Checkbox} from "expo-checkbox";
@@ -24,7 +23,7 @@ import {loadAndSetYuanValue} from "@/constants/helpers/db";
 
 type PaymentData = {
 	id: number;
-	title: number;
+	title: string;
 	value: number;
 	by_user: boolean;
 	made_on: Date;
@@ -38,20 +37,12 @@ function getCleanHours(targetDate: Date) {
 	return `${addZeroBefore(targetDate.getHours())}:${addZeroBefore(targetDate.getMinutes())}`;
 }
 
-function PaymentItem({payment, openDeleteModal}: {
+function PaymentItem({payment, openEditModal, openDeleteModal}: {
 	payment: PaymentData,
+	openEditModal: (recordToEdit: PaymentData) => void;
 	openDeleteModal: (target: PaymentData) => void
 }) {
-	function deletePayment() {
-		Alert.alert("Delete payment", `Are you sure you want to delete the payment:\n\n'${payment.title}' - ${payment.value}¥`, [{
-			text: "Cancel",
-			style: "cancel"
-		}, {
-			text: "Delete", onPress: () => {
-
-			}, style: "destructive"
-		}], {cancelable: true});
-	}
+	const swipeRef = useRef(null);
 
 	const LeftAction = () => (
 		<Pressable style={({pressed}) => [
@@ -59,7 +50,13 @@ function PaymentItem({payment, openDeleteModal}: {
 				backgroundColor: pressed ? "#2b4ae3" : "#8c90fb",
 				paddingHorizontal: 15
 			}
-		]} onPress={() => console.log("here")}>
+		]} onPress={() => {
+			openEditModal(payment);
+			if (swipeRef.current) {
+				// @ts-ignore
+				swipeRef.current.close();
+			}
+		}}>
 			<Pencil style={{margin: "auto"}}/>
 		</Pressable>
 	)
@@ -70,13 +67,19 @@ function PaymentItem({payment, openDeleteModal}: {
 				backgroundColor: pressed ? "#e32b2b" : "#fb8c8c",
 				paddingHorizontal: 15
 			}
-		]} onPress={() => openDeleteModal(payment)}>
+		]} onPress={() => {
+			openDeleteModal(payment);
+			if (swipeRef.current) {
+				// @ts-ignore
+				swipeRef.current.close();
+			}
+		}}>
 			<Trash style={{margin: "auto"}}/>
 		</Pressable>
 	)
 
 	return (
-		<Swipeable overshootRight={false} overshootLeft={false}
+		<Swipeable overshootRight={false} overshootLeft={false} ref={swipeRef}
 				   renderLeftActions={LeftAction}
 				   renderRightActions={RightAction}
 				   friction={2}
@@ -123,7 +126,6 @@ export default function Index() {
 	const [paymentValue, setPaymentValue] = useState("");
 	const [paymentTitle, setPaymentTitle] = useState("");
 	const [paymentByUser, setPaymentByUser] = useState(false);
-	const [editPaymentID, setEditPaymentID] = useState<number | null>(null);
 	const [totalSpent, setTotalSpent] = useState(0);
 	const [yuanValue, setYuanValue] = useState<string>();
 	const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -143,17 +145,20 @@ export default function Index() {
 		});
 	};
 
-	function handleModalOpen(recordID: number | null) {
-		if (recordID === null) {
+	function handleModalOpen(recordToEdit: PaymentData | undefined = undefined) {
+		if (!recordToEdit) {
 			setPaymentTitle("");
 			setPaymentByUser(false);
 			setPaymentValue("");
 			setPaymentDate(new Date());
 		} else {
-			// TODO: edit record
+			setPaymentTitle(recordToEdit.title);
+			setPaymentByUser(recordToEdit.by_user);
+			setPaymentValue(String(recordToEdit.value));
+			setPaymentDate(recordToEdit.made_on);
 		}
 
-		setEditPaymentID(recordID);
+		setSelectedPayment(recordToEdit);
 		setModalVisible(true);
 	}
 
@@ -169,14 +174,18 @@ export default function Index() {
 			return;
 		}
 
-		if (editPaymentID === null) {
+		if (!selectedPayment) {
 			await db.runAsync("INSERT INTO payment (title, total, paid_by_user, made_on) VALUES (?, ?, ?, ?)",
 				paymentTitle, paymentValueNumber, paymentByUser, paymentDate.getTime());
 			ToastAndroid.show("Payment created", ToastAndroid.SHORT);
 			setModalVisible(false);
 			fetchPayments();
 		} else {
-			// TODO: edit record
+			await db.runAsync("UPDATE payment SET title = ?, total = ?, paid_by_user = ?, made_on = ? WHERE id = ?",
+				paymentTitle, paymentValueNumber, paymentByUser, paymentDate.getTime(), selectedPayment?.id);
+			ToastAndroid.show("Payment updated", ToastAndroid.SHORT);
+			setModalVisible(false);
+			fetchPayments();
 		}
 	}
 
@@ -204,6 +213,11 @@ export default function Index() {
 	useEffect(fetchPayments, [db, yuanValue]);
 
 	function openDeleteModal(target: PaymentData) {
+		if (!target) {
+			ToastAndroid.show("Can't open delete modal...", ToastAndroid.SHORT);
+			return;
+		}
+
 		setSelectedPayment(target);
 		setDeleteModalVisible(true);
 	}
@@ -280,7 +294,7 @@ export default function Index() {
 					<ScrollView keyboardShouldPersistTaps="handled"
 								style={{backgroundColor: Colors.brightBackground, padding: 25}}>
 						<Text style={{color: Colors.text, fontSize: 26, fontWeight: "bold"}}>
-							New payment
+							{!selectedPayment ? "New payment" : "Edit payment"}
 						</Text>
 						<TextInput placeholder="Title" value={paymentTitle} onChangeText={setPaymentTitle}
 								   placeholderTextColor="rgba(248, 234, 239, 0.4)"
@@ -352,7 +366,7 @@ export default function Index() {
 								textAlign: "center",
 								fontSize: 16
 							}}>
-								Create new
+								{!selectedPayment ? "Create new" : "Edit"}
 							</Text>
 						</Pressable>
 					</ScrollView>
@@ -411,7 +425,7 @@ export default function Index() {
 						paddingVertical: 5,
 						gap: 3
 					}]}
-					onPress={() => handleModalOpen(null)}
+					onPress={() => handleModalOpen()}
 				>
 					<Plus strokeWidth={4}/>
 				</Pressable>
@@ -430,7 +444,8 @@ export default function Index() {
 							  No payments registered yet
 						  </Text>
 					  }
-					  renderItem={(data) => <PaymentItem payment={data.item} openDeleteModal={openDeleteModal}/>}
+					  renderItem={(data) => <PaymentItem payment={data.item} openEditModal={handleModalOpen}
+														 openDeleteModal={openDeleteModal}/>}
 					  contentContainerStyle={{
 						  gap: 10
 					  }}
