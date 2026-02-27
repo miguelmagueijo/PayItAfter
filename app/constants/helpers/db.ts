@@ -14,4 +14,8 @@ export const PAYMENT_TYPE = {
 	USER: 0, // Paid by user only, friend doesn't pay anything
 	USER_SPLIT: 1, // Paid by user, friend has to pay half
 	FRIEND_SPLIT: 2, // Paid by friend, user has to pay half
+	USER_PAYS_FRIEND: 3, // User pays his debt to friend
+	FRIEND_PAYS_USER: 4, // Friend pays his debt to user
+	DEBT_TO_FRIEND: 5, // User owes money to friend
+	DEBT_TO_USER: 6, // Friend owes money to user
 } as const;
