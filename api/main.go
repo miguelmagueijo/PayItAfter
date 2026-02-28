@@ -18,8 +18,9 @@ import (
 )
 
 type FileStatus struct {
-	LastSync       int64  `json:"lastSync"`
-	TargetFilename string `json:"targetFilename"`
+	LastSync        int64  `json:"lastSync"`
+	TargetFilename  string `json:"targetFilename"`
+	LastSyncVersion int64  `json:"version"`
 }
 
 const FileDataName = "fileData.json"
@@ -143,10 +144,40 @@ func main() {
 	authProtected := router.Group("/")
 	authProtected.Use(authMiddleware())
 
+	authProtected.GET("/check", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "ok",
+		})
+	})
+
+	authProtected.DELETE("/reset", func(c *gin.Context) {
+		data, err := getFileStatusData()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		err = os.Remove(DataPath + data.TargetFilename)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		err = os.Remove(DataPath + FileDataName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "reset with success",
+		})
+	})
+
 	authProtected.GET("/last-sync", func(c *gin.Context) {
 		data, err := getFileStatusData()
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": err.Error(),
 			})
 			return
@@ -154,14 +185,15 @@ func main() {
 
 		c.JSON(http.StatusOK, gin.H{
 			"timestamp": data.LastSync,
+			"version":   data.LastSyncVersion,
 		})
 	})
 
-	authProtected.GET("/sync-state/:timestamp", func(c *gin.Context) {
-		timestamp, err := strconv.ParseInt(c.Param("timestamp"), 10, 64)
+	authProtected.GET("/sync-state/:version", func(c *gin.Context) {
+		version, err := strconv.ParseInt(c.Param("version"), 10, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "invalid timestamp",
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "invalid version number",
 			})
 			return
 		}
@@ -175,7 +207,7 @@ func main() {
 		}
 
 		whoHasNewest := "server"
-		if data.LastSync < timestamp {
+		if data.LastSyncVersion < version {
 			whoHasNewest = "client"
 		}
 
@@ -232,7 +264,7 @@ func main() {
 		c.JSON(http.StatusOK, appDataJson)
 	})
 
-	authProtected.POST("/upload", func(c *gin.Context) {
+	authProtected.POST("/upload/:version", func(c *gin.Context) {
 		if appDataFileInUse {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "a file is already being saved, please wait",
@@ -244,6 +276,14 @@ func main() {
 		defer func() {
 			appDataFileInUse = false
 		}()
+
+		version, err := strconv.ParseInt(c.Param("version"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "invalid version number",
+			})
+			return
+		}
 
 		jsonData, err := io.ReadAll(c.Request.Body)
 		if err != nil {
@@ -280,6 +320,7 @@ func main() {
 		}
 
 		fileStatus.LastSync = time.Now().Unix()
+		fileStatus.LastSyncVersion = version
 
 		_, err = createStatusFile(fileStatus)
 		if err != nil {
