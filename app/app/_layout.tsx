@@ -8,7 +8,7 @@ import {Text, View} from "react-native";
 import {Colors} from "@/constants/theme";
 
 export async function handleDbInit(db: SQLiteDatabase) {
-	const DB_VERSION = 3;
+	const DB_VERSION = 4;
 
 	let result = await db.getFirstAsync<{ user_version: number }>(
 		"PRAGMA user_version"
@@ -33,6 +33,7 @@ export async function handleDbInit(db: SQLiteDatabase) {
 		db.execSync("CREATE TABLE payment (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, total REAL NOT NULL, type INTEGER NOT NULL DEFAULT 0, made_on TIMESTAMP);");
 		db.execSync("INSERT INTO configuration VALUES ('yuan_value', '7.8');");
 		db.execSync("INSERT INTO configuration VALUES ('sync_version', '0');");
+		db.execSync("INSERT INTO configuration VALUES ('server_token', 'TOKEN_NOT_SET');");
 	});
 
 	console.log("Database recreated with success.");
