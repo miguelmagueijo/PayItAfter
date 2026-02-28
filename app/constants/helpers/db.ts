@@ -10,6 +10,18 @@ export function loadAndSetYuanValue(db: SQLiteDatabase, setYuanValue: (value: st
 	}
 }
 
+export function loadAndSetServerToken(db: SQLiteDatabase, setServerToken: (value: string) => void) {
+	const serverTokenRow = db.getFirstSync<{
+		value: string
+	}>("SELECT value FROM configuration WHERE id = 'server_token'");
+
+	if (serverTokenRow) {
+		setServerToken(serverTokenRow.value);
+	}
+}
+
+export const NO_TOKEN_VALUE = "TOKEN_NOT_SET";
+
 export const DB_PAYMENT_TYPE = {
 	USER: 0, // Paid by user only, friend doesn't pay anything
 	USER_SPLIT: 1, // Paid by user, friend has to pay half
