@@ -10,14 +10,20 @@ export function loadAndSetYuanValue(db: SQLiteDatabase, setYuanValue: (value: st
 	}
 }
 
-export function loadAndSetServerToken(db: SQLiteDatabase, setServerToken: (value: string) => void) {
+export function loadServerToken(db: SQLiteDatabase, setServerToken: ((value: string) => void) | undefined = undefined) {
 	const serverTokenRow = db.getFirstSync<{
 		value: string
 	}>("SELECT value FROM configuration WHERE id = 'server_token'");
 
 	if (serverTokenRow) {
-		setServerToken(serverTokenRow.value);
+		if (setServerToken) {
+			setServerToken(serverTokenRow.value);
+		}
+
+		return serverTokenRow.value;
 	}
+
+	return null;
 }
 
 export const NO_TOKEN_VALUE = "TOKEN_NOT_SET";
