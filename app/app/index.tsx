@@ -39,22 +39,22 @@ const PAYMENTS_TYPE_MAP = new Map<number, PaymentTypeOption>();
 PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.USER, {
 	text: "Mine",
 	value: DB_PAYMENT_TYPE.USER,
-	color: Colors.paymentTypeUser
+	color: Colors.paymentTypeUser,
 });
 PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.DEBT_TO_FRIEND, {
 	text: "Owe friend",
 	value: DB_PAYMENT_TYPE.DEBT_TO_FRIEND,
-	color: Colors.paymentTypeDebtToFriend
+	color: Colors.paymentTypeDebtToFriend,
 });
 PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.DEBT_TO_USER, {
 	text: "Friend owes me",
 	value: DB_PAYMENT_TYPE.DEBT_TO_USER,
-	color: Colors.paymentTypeDebtToUser
+	color: Colors.paymentTypeDebtToUser,
 });
 PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.FRIEND_SPLIT, {
 	text: "I owe half to friend",
 	value: DB_PAYMENT_TYPE.FRIEND_SPLIT,
-	color: Colors.paymentTypeFriendSplit
+	color: Colors.paymentTypeFriendSplit,
 });
 PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.USER_SPLIT, {
 	text: "Friend owes me half",
@@ -124,7 +124,8 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 		</Pressable>
 	)
 
-	const paymentCardBgColor: string = PAYMENTS_TYPE_MAP.get(payment.type)!.color;
+	const paymentType = PAYMENTS_TYPE_MAP.get(payment.type)!;
+	const paymentCardBgColor: string = paymentType.color;
 
 	let total: number = 0;
 	let realTotal = 0;
@@ -153,7 +154,7 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 					alignItems: "center",
 					justifyContent: "space-between",
 					gap: 10,
-					height: 80
+					minHeight: 80
 				}}
 				dither={true}
 				locations={[0, 0.85]}
@@ -161,7 +162,10 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 				end={{x: 1, y: 0}}
 			>
 				<View style={{flex: 1}}>
-					<Text style={{fontSize: 16, fontWeight: "bold", lineHeight: 16, color: Colors.text}}>
+					<Text style={{fontSize: 10, color: Colors.text, opacity: 0.5}}>
+						{paymentType.text}
+					</Text>
+					<Text style={{fontSize: 16, fontWeight: "bold", lineHeight: 18, color: Colors.text}}>
 						{payment.title}
 					</Text>
 					<Text style={{fontSize: 12, color: Colors.text}}>
@@ -297,7 +301,9 @@ export default function Index() {
 					totalSpent += r.value;
 					break;
 				case DB_PAYMENT_TYPE.USER_SPLIT:
-					totalDebt -= r.value / 2;
+					const half = r.value / 2;
+					totalSpent += half;
+					totalDebt -= half;
 					break;
 				case DB_PAYMENT_TYPE.FRIEND_SPLIT:
 					totalDebt += r.value / 2;
@@ -306,6 +312,7 @@ export default function Index() {
 					totalDebt += r.value;
 					break;
 				case DB_PAYMENT_TYPE.DEBT_TO_USER:
+					totalSpent += r.value;
 					totalDebt -= r.value;
 					break;
 				case DB_PAYMENT_TYPE.USER_PAYS_FRIEND:
@@ -313,7 +320,7 @@ export default function Index() {
 					totalDebt -= r.value;
 					break
 				case DB_PAYMENT_TYPE.FRIEND_PAYS_USER:
-					totalDebt -= r.value;
+					totalDebt += r.value;
 					break;
 			}
 
@@ -575,7 +582,7 @@ export default function Index() {
 			}
 			{totalDebt !== 0 &&
                 <View style={{
-					backgroundColor: "white",
+					backgroundColor: totalDebt > 0 ? "#410505" : "#064115",
 					marginTop: 10,
 					paddingHorizontal: 15,
 					paddingVertical: 10,
@@ -584,19 +591,21 @@ export default function Index() {
 					alignItems: "center",
 					justifyContent: "space-between"
 				}}>
-                    <Text style={{fontSize: 16, fontWeight: "bold"}}>
+                    <Text style={{fontSize: 16, fontWeight: "bold", color: totalDebt > 0 ? "#f69292" : "#93f5ac"}}>
                         You {totalDebt > 0 ? "owe" : "are owed"}
                     </Text>
                     <View>
                         <Text style={{
 							textAlign: "right",
 							fontSize: 20,
-							fontWeight: "bold"
+							fontWeight: "bold",
+							color: totalDebt > 0 ? "#f69292" : "#93f5ac",
 						}}>{Math.abs(roundNumber(totalDebt, 2))} ¥</Text>
                         <Text style={{
 							textAlign: "right",
 							marginTop: -2.5,
-							opacity: 0.25
+							opacity: 0.25,
+							color: totalDebt > 0 ? "#f69292" : "#93f5ac",
 						}}>
 							{roundNumber(Math.abs(totalDebt) / Number(yuanValue), 2)} €
                         </Text>
