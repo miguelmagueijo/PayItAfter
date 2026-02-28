@@ -10,7 +10,7 @@ import {
 	TouchableWithoutFeedback,
 	View
 } from "react-native";
-import {Pencil, Plus, Trash} from "lucide-react-native/icons";
+import {EllipsisVertical, Pencil, Plus, Trash} from "lucide-react-native/icons";
 import {Colors} from "@/constants/theme";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {useEffect, useRef, useState} from "react";
@@ -18,7 +18,7 @@ import {DateTimePickerAndroid} from "@react-native-community/datetimepicker";
 import {Swipeable} from "react-native-gesture-handler";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
-import {loadAndSetYuanValue, PAYMENT_TYPE} from "@/constants/helpers/db";
+import {DB_PAYMENT_TYPE, loadAndSetYuanValue} from "@/constants/helpers/db";
 import {LinearGradient} from "expo-linear-gradient";
 
 type PaymentData = {
@@ -29,12 +29,58 @@ type PaymentData = {
 	made_on: Date;
 }
 
-function addZeroBefore(value: number) {
-	return (value < 10) ? "0" + value : value;
+type PaymentTypeOption = {
+	text: string;
+	value: number;
+	color: string;
+}
+
+const PAYMENTS_TYPE_MAP = new Map<number, PaymentTypeOption>();
+PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.USER, {
+	text: "Mine",
+	value: DB_PAYMENT_TYPE.USER,
+	color: Colors.paymentTypeUser
+});
+PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.DEBT_TO_FRIEND, {
+	text: "Owe friend",
+	value: DB_PAYMENT_TYPE.DEBT_TO_FRIEND,
+	color: Colors.paymentTypeDebtToFriend
+});
+PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.DEBT_TO_USER, {
+	text: "Friend owes me",
+	value: DB_PAYMENT_TYPE.DEBT_TO_USER,
+	color: Colors.paymentTypeDebtToUser
+});
+PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.FRIEND_SPLIT, {
+	text: "I owe half to friend",
+	value: DB_PAYMENT_TYPE.FRIEND_SPLIT,
+	color: Colors.paymentTypeFriendSplit
+});
+PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.USER_SPLIT, {
+	text: "Friend owes me half",
+	value: DB_PAYMENT_TYPE.USER_SPLIT,
+	color: Colors.paymentTypeUserSplit
+});
+PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.USER_PAYS_FRIEND, {
+	text: "Paid friend",
+	value: DB_PAYMENT_TYPE.USER_PAYS_FRIEND,
+	color: Colors.paymentTypeUserFriend
+});
+PAYMENTS_TYPE_MAP.set(DB_PAYMENT_TYPE.FRIEND_PAYS_USER, {
+	text: "Friend paid me",
+	value: DB_PAYMENT_TYPE.FRIEND_PAYS_USER,
+	color: Colors.paymentTypeFriendUser
+});
+
+function roundNumber(num: number, precision: number) {
+	return Number(num.toFixed(precision));
 }
 
 function getCleanHours(targetDate: Date) {
-	return `${addZeroBefore(targetDate.getHours())}:${addZeroBefore(targetDate.getMinutes())}`;
+	return targetDate.toLocaleTimeString("pt-PT", {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
 }
 
 function PaymentItem({payment, openEditModal, openDeleteModal}: {
@@ -78,21 +124,16 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 		</Pressable>
 	)
 
-	//paymentCardBgColor = "#0c2806";
-	//paymentCardBgColor = "#280606";
-	let paymentCardBgColor: string;
-	switch (payment.type) {
-		case PAYMENT_TYPE.USER:
-			paymentCardBgColor = Colors.paymentTypeUser;
-			break;
-		case PAYMENT_TYPE.USER_SPLIT:
-			paymentCardBgColor = Colors.paymentTypeUserSplit;
-			break;
-		case PAYMENT_TYPE.FRIEND_SPLIT:
-			paymentCardBgColor = Colors.paymentTypeFriendSplit;
-			break;
-		default:
-			paymentCardBgColor = Colors.accent;
+	const paymentCardBgColor: string = PAYMENTS_TYPE_MAP.get(payment.type)!.color;
+
+	let total: number = 0;
+	let realTotal = 0;
+	// @ts-ignore
+	if ([DB_PAYMENT_TYPE.USER_SPLIT, DB_PAYMENT_TYPE.FRIEND_SPLIT].includes(payment.type)) {
+		total = roundNumber(payment.value / 2, 2);
+		realTotal = payment.value;
+	} else {
+		total = payment.value;
 	}
 
 	return (
@@ -112,6 +153,7 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 					alignItems: "center",
 					justifyContent: "space-between",
 					gap: 10,
+					height: 80
 				}}
 				dither={true}
 				locations={[0, 0.85]}
@@ -126,11 +168,31 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 						{payment.made_on.toLocaleDateString()} {getCleanHours(payment.made_on)}
 					</Text>
 				</View>
-				<View style={{flexDirection: "row", alignItems: "flex-end", gap: 2.5}}>
-					<Text style={{fontSize: 18, fontWeight: "bold", color: Colors.text}}>
-						{payment.value}
+				<View>
+					{realTotal > 0 &&
+                        <Text style={{
+							color: Colors.text,
+							fontSize: 10,
+							opacity: 0.5,
+							textAlign: "right"
+						}}>
+							{realTotal} ¥ / 2
+                        </Text>
+					}
+					<View style={{flexDirection: "row", alignItems: "flex-end", gap: 2.5, justifyContent: "flex-end"}}>
+						<Text style={{fontSize: 20, fontWeight: "bold", color: Colors.text}}>
+							{total}
+						</Text>
+						<Text style={{fontSize: 12, color: Colors.text}}>¥</Text>
+					</View>
+					<Text style={{
+						color: Colors.text,
+						fontSize: 10,
+						opacity: 0.5,
+						textAlign: "right"
+					}}>
+						{roundNumber(total / 7.8, 2)} €
 					</Text>
-					<Text style={{fontSize: 12, color: Colors.text}}>¥</Text>
 				</View>
 			</LinearGradient>
 		</Swipeable>
@@ -145,11 +207,13 @@ export default function Index() {
 	const [paymentDate, setPaymentDate] = useState(new Date());
 	const [paymentValue, setPaymentValue] = useState("");
 	const [paymentTitle, setPaymentTitle] = useState("");
-	const [paymentType, setPaymentType] = useState<number>(PAYMENT_TYPE.USER);
+	const [paymentType, setPaymentType] = useState<PaymentTypeOption>(PAYMENTS_TYPE_MAP.get(DB_PAYMENT_TYPE.USER)!);
 	const [totalSpent, setTotalSpent] = useState(0);
 	const [yuanValue, setYuanValue] = useState<string>();
 	const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 	const [selectedPayment, setSelectedPayment] = useState<PaymentData>();
+	const [totalDebt, setTotalDebt] = useState<number>(0);
+	const [paymentTypeModalVisibility, setPaymentTypeModalVisibility] = useState(false);
 
 	const showCalendarMode = (mode: "date" | "time") => {
 		DateTimePickerAndroid.open({
@@ -168,13 +232,13 @@ export default function Index() {
 	function handleModalOpen(recordToEdit: PaymentData | undefined = undefined) {
 		if (!recordToEdit) {
 			setPaymentTitle("");
-			setPaymentType(PAYMENT_TYPE.USER);
+			setPaymentType(PAYMENTS_TYPE_MAP.get(DB_PAYMENT_TYPE.USER)!);
 			setPaymentValue("");
 			setPaymentDate(new Date());
 		} else {
 			setPaymentTitle(recordToEdit.title);
 			setPaymentValue(String(recordToEdit.value));
-			setPaymentType(recordToEdit.type);
+			setPaymentType(PAYMENTS_TYPE_MAP.get(recordToEdit.type)!);
 			setPaymentDate(recordToEdit.made_on);
 		}
 
@@ -196,13 +260,13 @@ export default function Index() {
 
 		if (!selectedPayment) {
 			await db.runAsync("INSERT INTO payment (title, total, type, made_on) VALUES (?, ?, ?, ?)",
-				paymentTitle, paymentValueNumber, paymentType, paymentDate.getTime());
+				paymentTitle, paymentValueNumber, paymentType.value, paymentDate.getTime());
 			ToastAndroid.show("Payment created", ToastAndroid.SHORT);
 			setModalVisible(false);
 			fetchPayments();
 		} else {
 			await db.runAsync("UPDATE payment SET title = ?, total = ?, type = ?, made_on = ? WHERE id = ?",
-				paymentTitle, paymentValueNumber, paymentType, paymentDate.getTime(), selectedPayment?.id);
+				paymentTitle, paymentValueNumber, paymentType.value, paymentDate.getTime(), selectedPayment?.id);
 			ToastAndroid.show("Payment updated", ToastAndroid.SHORT);
 			setModalVisible(false);
 			fetchPayments();
@@ -217,15 +281,47 @@ export default function Index() {
 		let result = db.getAllSync<PaymentData>("SELECT id, title, total AS value, type, made_on FROM payment ORDER BY made_on DESC");
 
 		let totalSpent = 0;
+		let totalDebt = 0;
 		result = result.map((r) => {
 			r.made_on = new Date(r.made_on);
 			// @ts-ignore
 			r.by_user = r.by_user === "true";
-			totalSpent += r.value;
+
+			// @ts-ignore
+			if ([DB_PAYMENT_TYPE.USER, DB_PAYMENT_TYPE.USER_PAYS_FRIEND].includes(r.type)) {
+				totalSpent += r.value;
+			}
+
+			switch (r.type) {
+				case DB_PAYMENT_TYPE.USER:
+					totalSpent += r.value;
+					break;
+				case DB_PAYMENT_TYPE.USER_SPLIT:
+					totalDebt -= r.value / 2;
+					break;
+				case DB_PAYMENT_TYPE.FRIEND_SPLIT:
+					totalDebt += r.value / 2;
+					break;
+				case DB_PAYMENT_TYPE.DEBT_TO_FRIEND:
+					totalDebt += r.value;
+					break;
+				case DB_PAYMENT_TYPE.DEBT_TO_USER:
+					totalDebt -= r.value;
+					break;
+				case DB_PAYMENT_TYPE.USER_PAYS_FRIEND:
+					totalSpent += r.value;
+					totalDebt -= r.value;
+					break
+				case DB_PAYMENT_TYPE.FRIEND_PAYS_USER:
+					totalDebt -= r.value;
+					break;
+			}
+
 			return r
 		});
 
 		setTotalSpent(totalSpent);
+		setTotalDebt(totalDebt);
 		setPayments(result);
 	}
 
@@ -246,7 +342,7 @@ export default function Index() {
 
 	return (
 		<SafeAreaView style={{marginHorizontal: 20, flex: 1}}>
-			<Modal animationType={"fade"} visible={deleteModalVisible} transparent={true}
+			<Modal animationType={"fade"} visible={deleteModalVisible} transparent
 				   onRequestClose={() => setDeleteModalVisible(false)}>
 				<Pressable style={{flex: 1, backgroundColor: "rgba(0,0,0,0.7)"}}
 						   onPress={() => setDeleteModalVisible(false)}>
@@ -308,6 +404,41 @@ export default function Index() {
 					</TouchableWithoutFeedback>
 				</Pressable>
 			</Modal>
+			<Modal visible={paymentTypeModalVisibility} transparent
+				   onRequestClose={() => setPaymentTypeModalVisibility(false)}>
+				<Pressable style={{backgroundColor: "rgba(0,0,0,0.75)", flex: 1}}
+						   onPress={() => setPaymentTypeModalVisibility(false)}>
+					<TouchableWithoutFeedback>
+						<View
+							style={{
+								backgroundColor: Colors.brightBackground,
+								marginVertical: "auto",
+								marginHorizontal: 20,
+								padding: 20,
+								borderRadius: 5,
+							}}>
+							<Text style={{fontSize: 22, fontWeight: "bold", color: Colors.text, marginBottom: 20}}>
+								Payment type
+							</Text>
+							<FlatList data={[...PAYMENTS_TYPE_MAP.values()]}
+									  contentContainerStyle={{gap: 15, display: "flex"}}
+									  renderItem={({item}) => <Pressable
+										  style={({pressed}) => [{
+											  backgroundColor: pressed ? Colors.accent : item.color,
+											  borderRadius: 5,
+											  padding: 10
+										  }]}
+										  onPress={() => {
+											  setPaymentType(item);
+											  setPaymentTypeModalVisibility(false);
+										  }}>
+										  <Text style={{color: Colors.text}}>{item.text}</Text>
+									  </Pressable>}/>
+
+						</View>
+					</TouchableWithoutFeedback>
+				</Pressable>
+			</Modal>
 			<Modal animationType="slide" visible={modalVisible} transparent
 				   onRequestClose={() => setModalVisible(false)}>
 				<Pressable style={{flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)"}}
@@ -335,7 +466,7 @@ export default function Index() {
 									</Pressable>
 									<Pressable style={styles.modalFieldColors} onPress={() => showCalendarMode("time")}>
 										<Text style={styles.baseModalField}>
-											{addZeroBefore(paymentDate.getHours())}:{addZeroBefore(paymentDate.getMinutes())}
+											{getCleanHours(paymentDate)}
 										</Text>
 									</Pressable>
 								</View>
@@ -364,51 +495,19 @@ export default function Index() {
 								</Text>
 							</View>
 						</View>
-						<View style={{
-							marginTop: 20,
-							flexDirection: "row",
-							gap: 10,
-							justifyContent: "space-between",
-							alignItems: "center"
-						}}>
-							<Pressable onPress={() => setPaymentType(PAYMENT_TYPE.USER)}
-									   style={{
-										   flex: 1,
-										   padding: 10,
-										   backgroundColor: paymentType === PAYMENT_TYPE.USER ? Colors.paymentTypeUser : Colors.background,
-										   borderWidth: 2,
-										   borderRadius: 5,
-										   borderColor: Colors.paymentTypeUser,
-									   }}>
-								<Text style={{color: Colors.text, textAlign: "center", fontWeight: "bold"}}>
-									Only mine
-								</Text>
-							</Pressable>
-							<Pressable onPress={() => setPaymentType(PAYMENT_TYPE.USER_SPLIT)}
-									   style={{
-										   flex: 1,
-										   padding: 10,
-										   backgroundColor: paymentType === PAYMENT_TYPE.USER_SPLIT ? Colors.paymentTypeUserSplit : Colors.background,
-										   borderWidth: 2,
-										   borderRadius: 5,
-										   borderColor: Colors.paymentTypeUserSplit,
-									   }}>
-								<Text style={{color: Colors.text, textAlign: "center", fontWeight: "bold"}}>
-									I paid
-								</Text>
-							</Pressable>
-							<Pressable onPress={() => setPaymentType(PAYMENT_TYPE.FRIEND_SPLIT)}
-									   style={{
-										   flex: 1,
-										   padding: 10,
-										   backgroundColor: paymentType === PAYMENT_TYPE.FRIEND_SPLIT ? Colors.paymentTypeFriendSplit : Colors.background,
-										   borderWidth: 2,
-										   borderRadius: 5,
-										   borderColor: Colors.paymentTypeFriendSplit,
-									   }}>
-								<Text style={{color: Colors.text, textAlign: "center", fontWeight: "bold"}}>
-									Friend paid
-								</Text>
+						<View style={{marginTop: 20}}>
+							<Pressable
+								style={[styles.modalFieldColors, {
+									flexDirection: "row",
+									alignItems: "center",
+									justifyContent: "space-between",
+									padding: 10,
+									backgroundColor: paymentType.color
+								}]}
+								onPress={() => setPaymentTypeModalVisibility(true)}
+							>
+								<Text style={{color: Colors.text}}>{paymentType.text}</Text>
+								<EllipsisVertical color={Colors.text} strokeWidth={2}/>
 							</Pressable>
 						</View>
 						<Pressable style={({pressed}) => [{
@@ -422,7 +521,7 @@ export default function Index() {
 							gap: 5
 						}]} onPress={handleModalSubmit}>
 							{!selectedPayment ? <Plus strokeWidth={4} size={18} color={Colors.background}/> :
-								<Pencil strokeWidth={4} size={18} color={Colors.background}/>}
+								<Pencil strokeWidth={2} size={18} color={Colors.background}/>}
 
 							<Text style={{
 								color: Colors.background,
@@ -446,8 +545,12 @@ export default function Index() {
 				alignItems: "center"
 			}}>
 				<View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
-					<Text style={{color: Colors.text, fontWeight: "bold", fontSize: 20}}>{totalSpent} ¥</Text>
-					<Text style={{color: Colors.primary, fontSize: 12, fontWeight: "bold"}}>YUAN</Text>
+					<Text
+						style={{
+							color: Colors.text,
+							fontWeight: "bold",
+							fontSize: 20
+						}}>{roundNumber(totalSpent, 2)} ¥</Text>
 				</View>
 				<View style={{
 					borderColor: Colors.softerSecondary,
@@ -459,9 +562,8 @@ export default function Index() {
 				}}/>
 				<View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
 					<Text style={{color: Colors.text, fontWeight: "bold", fontSize: 20}}>
-						{yuanValue ? (totalSpent / Number(yuanValue)).toFixed(2) : "--"} €
+						{yuanValue ? roundNumber(totalSpent / Number(yuanValue), 2) : "--"} €
 					</Text>
-					<Text style={{color: Colors.primary, fontSize: 12}}>EUR</Text>
 				</View>
 			</View>
 			{yuanValue &&
@@ -471,9 +573,36 @@ export default function Index() {
                     </Text>
                 </View>
 			}
-			<View>
-				<Text>You currently owe / are owed</Text>
-			</View>
+			{totalDebt !== 0 &&
+                <View style={{
+					backgroundColor: "white",
+					marginTop: 10,
+					paddingHorizontal: 15,
+					paddingVertical: 10,
+					borderRadius: 5,
+					flexDirection: "row",
+					alignItems: "center",
+					justifyContent: "space-between"
+				}}>
+                    <Text style={{fontSize: 16, fontWeight: "bold"}}>
+                        You {totalDebt > 0 ? "owe" : "are owed"}
+                    </Text>
+                    <View>
+                        <Text style={{
+							textAlign: "right",
+							fontSize: 20,
+							fontWeight: "bold"
+						}}>{Math.abs(roundNumber(totalDebt, 2))} ¥</Text>
+                        <Text style={{
+							textAlign: "right",
+							marginTop: -2.5,
+							opacity: 0.25
+						}}>
+							{roundNumber(Math.abs(totalDebt) / Number(yuanValue), 2)} €
+                        </Text>
+                    </View>
+                </View>
+			}
 			<View style={{
 				marginTop: 15,
 				flexDirection: "row",
