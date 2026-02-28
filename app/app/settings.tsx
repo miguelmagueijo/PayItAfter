@@ -1,14 +1,24 @@
-import {Keyboard, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View} from "react-native";
+import {Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View} from "react-native";
 import {useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
 import {Colors} from "@/constants/theme";
-import {loadAndSetYuanValue} from "@/constants/helpers/db";
+import {loadAndSetServerToken, loadAndSetYuanValue} from "@/constants/helpers/db";
 import {Equal} from "lucide-react-native/icons";
+
+function SyncOptions() {
+	return (
+		<View style={{backgroundColor: "white", marginTop: 20}}>
+			<Text>Option</Text>
+		</View>
+	);
+}
 
 export default function Settings() {
 	const [yuanValue, setYuanValue] = useState<string>();
+	const [serverToken, setServerToken] = useState<string>();
+	const [serverOnline, setServerOnline] = useState<boolean>(false);
 	const db = useSQLiteContext();
 
 	function handleYuanValueSave() {
@@ -29,12 +39,26 @@ export default function Settings() {
 		ToastAndroid.show("Yuan value changed", ToastAndroid.SHORT);
 	}
 
+	function handleServerTokenSave() {
+		if (!serverToken) {
+			ToastAndroid.show("Server token cannot be empty", ToastAndroid.SHORT);
+			return;
+		}
+
+		Keyboard.dismiss();
+
+		db.runSync("UPDATE configuration SET value = ? WHERE id = 'server_token'", serverToken);
+		ToastAndroid.show("Server token updated", ToastAndroid.SHORT);
+	}
+
 	useFocusEffect(() => {
 		loadAndSetYuanValue(db, setYuanValue);
+		loadAndSetServerToken(db, setServerToken);
+		setServerOnline(false);
 	});
 
 	return (
-		<View style={{padding: 15}}>
+		<ScrollView style={{padding: 15}} keyboardShouldPersistTaps={"handled"}>
 			<Text style={{color: "#f8eaef", fontSize: 14, fontWeight: "bold", opacity: 0.5}}>CONVERSION RATE</Text>
 			<View
 				style={{
@@ -84,7 +108,46 @@ export default function Settings() {
 					<Check size={24} strokeWidth={4}/>
 				</Pressable>
 			</View>
-		</View>
+			<View style={{marginTop: 20}} >
+				<Text style={{color: "#f8eaef", fontSize: 14, fontWeight: "bold", opacity: 0.5}}>
+					SERVER TOKEN
+				</Text>
+				<View style={{flexDirection: "row", gap: 10, alignItems: "center"}}>
+					<TextInput
+						value={serverToken}
+						onChangeText={newValue => setServerToken(newValue)}
+						inputMode={"text"}
+						style={{
+							flex: 1,
+							borderWidth: 4,
+							backgroundColor: Colors.dark,
+							padding: 10,
+							borderColor: Colors.brightBackground,
+							color: Colors.text,
+							fontSize: 18,
+							borderRadius: 5
+					}}/>
+					<Pressable
+						style={({pressed}) => [
+							{
+								backgroundColor: pressed ? Colors.accent : Colors.brighterPrimary,
+								justifyContent: "center",
+								alignItems: "center",
+								borderRadius: 5,
+								width: 55,
+								padding: 10,
+								borderWidth: 4,
+								borderColor: "transparent"
+							},
+						]}
+						onPress={handleServerTokenSave}
+					>
+						<Check strokeWidth={4}/>
+					</Pressable>
+				</View>
+			</View>
+			{serverOnline && <SyncOptions/>}
+		</ScrollView>
 	);
 }
 
