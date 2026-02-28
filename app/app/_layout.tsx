@@ -6,6 +6,7 @@ import {House, Settings} from "lucide-react-native/icons";
 import {DrawerContentComponentProps, DrawerContentScrollView, DrawerItemList} from "@react-navigation/drawer";
 import {Text, View} from "react-native";
 import {Colors} from "@/constants/theme";
+import {NO_TOKEN_VALUE} from "@/constants/helpers/db";
 
 export async function handleDbInit(db: SQLiteDatabase) {
 	const DB_VERSION = 4;
@@ -33,7 +34,7 @@ export async function handleDbInit(db: SQLiteDatabase) {
 		db.execSync("CREATE TABLE payment (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, total REAL NOT NULL, type INTEGER NOT NULL DEFAULT 0, made_on TIMESTAMP);");
 		db.execSync("INSERT INTO configuration VALUES ('yuan_value', '7.8');");
 		db.execSync("INSERT INTO configuration VALUES ('sync_version', '0');");
-		db.execSync("INSERT INTO configuration VALUES ('server_token', 'TOKEN_NOT_SET');");
+		db.runSync("INSERT INTO configuration VALUES ('server_token', ?);", NO_TOKEN_VALUE);
 	});
 
 	console.log("Database recreated with success.");
