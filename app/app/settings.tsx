@@ -1,19 +1,63 @@
 import {Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View} from "react-native";
-import {useCallback, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
 import {Colors} from "@/constants/theme";
 import {loadAndSetYuanValue, loadServerToken} from "@/constants/helpers/db";
-import {Equal, RotateCcw} from "lucide-react-native/icons";
+import {Equal, RefreshCcw, RotateCcw} from "lucide-react-native/icons";
+import {API_URL, getAuthHeader} from "@/constants/helpers/api";
 
-function SyncOptions({isLoading, isBadToken, serverStatus, updateStatusFn}: {
+type LastSyncInfo = {
+    timestamp: number;
+    version: number;
+    date: Date;
+}
+
+function SyncOptions({isLoading, isBadToken, token, serverStatus, updateStatusFn, setServerOnlineFn}: {
     isLoading: boolean,
     isBadToken: boolean,
+    token: string | undefined,
     serverStatus: boolean,
-    updateStatusFn: () => void
+    updateStatusFn: () => void,
+    setServerOnlineFn: (isOnline: boolean) => void,
 }) {
-    if (!serverStatus) {
+    const [lastSyncInfo, setLastSyncInfo] = useState<LastSyncInfo>();
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+    function updateLastSyncInfo() {
+        if (isRefreshing || !serverStatus || !token) {
+            return;
+        }
+
+        setIsRefreshing(true);
+
+        fetch(`${API_URL}/last-sync`, {
+            method: "GET",
+            headers: {
+                Authorization: getAuthHeader(token),
+            }
+        }).then((response) => {
+            if (!response.ok) {
+                throw Error("No sync info available");
+            }
+
+            return response.json();
+        }).then((data) => {
+            setLastSyncInfo({...data, date: new Date(data.timestamp * 1000)});
+        }).catch(() => {
+            setServerOnlineFn(false);
+        }).finally(() => {
+            setTimeout(() => setIsRefreshing(false), 2000);
+        });
+    }
+
+    useEffect(() => {
+        updateLastSyncInfo();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [serverStatus])
+
+    if (!serverStatus || !token) {
         let buttonColor: string = Colors.primary;
         if (isLoading) {
             buttonColor = "gray";
@@ -22,7 +66,7 @@ function SyncOptions({isLoading, isBadToken, serverStatus, updateStatusFn}: {
         return (
             <View style={{marginTop: 20}}>
                 <Text style={{color: "red", textAlign: "center", fontSize: 18}}>
-                    {isBadToken ? "Bad server token" : "Couldn't connect to server!"}
+                    {isBadToken ? "Server token is not accepted" : "Couldn't connect to server!"}
                 </Text>
                 <Pressable
                     disabled={isLoading}
@@ -47,11 +91,36 @@ function SyncOptions({isLoading, isBadToken, serverStatus, updateStatusFn}: {
         );
     }
 
-    console.log(serverStatus);
-
     return (
-        <View style={{backgroundColor: "white", marginTop: 20}}>
-            <Text>Option</Text>
+        <View style={{marginTop: 20}}>
+            {lastSyncInfo && lastSyncInfo.timestamp > 0 &&
+                <Text style={{color: Colors.text, opacity: 0.5}}>
+                    Sync Version is {lastSyncInfo.version} @&nbsp;
+                    {lastSyncInfo.date.toLocaleDateString()}&nbsp;
+                    {lastSyncInfo.date.toLocaleTimeString("pt-PT", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    })}
+                </Text>}
+            <Pressable
+                disabled={isRefreshing}
+                style={({pressed}) => [{
+                    padding: 10,
+                    marginTop: 10,
+                    backgroundColor: isRefreshing ? "gray" : (pressed ? Colors.accent : Colors.primary),
+                    borderRadius: 5,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10
+                }]}
+                onPress={updateLastSyncInfo}
+            >
+                <RefreshCcw/>
+                <Text style={{fontWeight: "bold", fontSize: 16}}>
+                    Refresh
+                </Text>
+            </Pressable>
         </View>
     );
 }
@@ -62,6 +131,7 @@ export default function Settings() {
     const [serverOnline, setServerOnline] = useState<boolean>(false);
     const [isBadToken, setIsBadToken] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [dbServerToken, setDbServerToken] = useState<string>();
     const db = useSQLiteContext();
 
     function handleYuanValueSave() {
@@ -111,9 +181,11 @@ export default function Settings() {
             return;
         }
 
-        fetch("http://192.168.1.126:8900/check", {
+        setDbServerToken(token);
+
+        fetch(`${API_URL}/check`, {
             headers: {
-                Authorization: `PIA ${token}`,
+                Authorization: getAuthHeader(token),
             },
             method: "GET",
         }).then(res => {
@@ -225,8 +297,8 @@ export default function Settings() {
                     </Pressable>
                 </View>
             </View>
-            <SyncOptions isLoading={isLoading} isBadToken={isBadToken} serverStatus={serverOnline}
-                         updateStatusFn={updateServerStatus}/>
+            <SyncOptions isLoading={isLoading} isBadToken={isBadToken} token={dbServerToken} serverStatus={serverOnline}
+                         setServerOnlineFn={setServerOnline} updateStatusFn={updateServerStatus}/>
         </ScrollView>
     );
 }
