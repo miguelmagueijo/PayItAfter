@@ -121,6 +121,7 @@ function SyncOptions({isLoading, isBadToken, token, serverStatus, updateStatusFn
                     Refresh
                 </Text>
             </Pressable>
+            {/* TODO: create sync button and delete button */}
         </View>
     );
 }
