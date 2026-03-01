@@ -285,17 +285,24 @@ func main() {
 			return
 		}
 
-		jsonData, err := io.ReadAll(c.Request.Body)
+		fileStatus, err := getFileStatusData()
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": err.Error(),
 			})
 			return
 		}
 
-		fileStatus, err := getFileStatusData()
+		if version <= fileStatus.LastSyncVersion {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "given upload version is older than server version",
+			})
+			return
+		}
+
+		jsonData, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
+			c.JSON(http.StatusBadRequest, gin.H{
 				"message": err.Error(),
 			})
 			return
