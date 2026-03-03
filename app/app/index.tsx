@@ -13,7 +13,7 @@ import {
 import {EllipsisVertical, Pencil, Plus, Trash} from "lucide-react-native/icons";
 import {Colors} from "@/constants/theme";
 import {SafeAreaView} from "react-native-safe-area-context";
-import {useEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {DateTimePickerAndroid} from "@react-native-community/datetimepicker";
 import {Swipeable} from "react-native-gesture-handler";
 import {useSQLiteContext} from "expo-sqlite";
@@ -218,6 +218,7 @@ export default function Index() {
 	const [selectedPayment, setSelectedPayment] = useState<PaymentData>();
 	const [totalDebt, setTotalDebt] = useState<number>(0);
 	const [paymentTypeModalVisibility, setPaymentTypeModalVisibility] = useState(false);
+	const [isLoadingPayments, setIsLoadingPayments] = useState(false);
 
 	const showCalendarMode = (mode: "date" | "time") => {
 		DateTimePickerAndroid.open({
@@ -278,9 +279,11 @@ export default function Index() {
 	}
 
 	function fetchPayments() {
-		if (!yuanValue) {
+		if (!yuanValue || isLoadingPayments) {
 			return;
 		}
+
+		setIsLoadingPayments(true);
 
 		let result = db.getAllSync<PaymentData>("SELECT id, title, total AS value, type, made_on FROM payment ORDER BY made_on DESC");
 
@@ -330,11 +333,16 @@ export default function Index() {
 		setTotalSpent(totalSpent);
 		setTotalDebt(totalDebt);
 		setPayments(result);
+		setIsLoadingPayments(false);
 	}
 
-	useFocusEffect(() => {
-		loadAndSetYuanValue(db, setYuanValue);
-	});
+	useFocusEffect(
+		useCallback(() => {
+			loadAndSetYuanValue(db, setYuanValue);
+			fetchPayments();
+		}, [db])
+	);
+
 	useEffect(fetchPayments, [db, yuanValue]);
 
 	function openDeleteModal(target: PaymentData) {

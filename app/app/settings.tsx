@@ -1,17 +1,104 @@
-import {Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View} from "react-native";
+import {
+	Keyboard,
+	Modal,
+	Pressable,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TextStyle,
+	ToastAndroid,
+	TouchableWithoutFeedback,
+	View,
+	ViewStyle
+} from "react-native";
 import {useCallback, useEffect, useState} from "react";
 import {Check} from "lucide-react-native";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
 import {Colors} from "@/constants/theme";
 import {loadAndSetYuanValue, loadServerToken} from "@/constants/helpers/db";
-import {Equal, RefreshCcw, RotateCcw} from "lucide-react-native/icons";
+import {Equal, Eraser, RefreshCcw, RotateCcw} from "lucide-react-native/icons";
 import {API_URL, getAuthHeader} from "@/constants/helpers/api";
 
 type LastSyncInfo = {
 	timestamp: number;
 	version: number;
 	date: Date;
+}
+
+function ConfirmationModal({
+							   visibleVar,
+							   visibleSetVar,
+							   title,
+							   text,
+							   yesBtnStyle,
+							   yesTextBtnStyle,
+							   noBtnStyle,
+							   noTextBtnStyle,
+							   yesAction,
+							   noAction
+						   }: {
+	visibleVar: boolean,
+	visibleSetVar: React.Dispatch<React.SetStateAction<boolean>>,
+	title: string,
+	text: string,
+	yesBtnStyle: ViewStyle,
+	yesTextBtnStyle: TextStyle,
+	noBtnStyle: ViewStyle,
+	noTextBtnStyle: TextStyle,
+	yesAction?: () => void,
+	noAction?: () => void
+}) {
+	return (
+		<Modal animationType={"fade"} visible={visibleVar} transparent onRequestClose={() => visibleSetVar(false)}>
+			<Pressable style={{backgroundColor: "rgba(0,0,0,0.75)", flex: 1}} onPress={() => visibleSetVar(false)}>
+				<TouchableWithoutFeedback>
+					<View style={{
+						backgroundColor: Colors.brightBackground,
+						padding: 20,
+						marginVertical: "auto",
+						marginHorizontal: 15,
+						borderRadius: 5
+					}}>
+						<Text style={{
+							color: Colors.text,
+							fontSize: 22,
+							marginBottom: 15,
+							fontWeight: "bold",
+							paddingBottom: 5,
+							borderBottomWidth: 2,
+							borderBottomColor: "rgba(255,255,255,0.1)"
+						}}>{title}</Text>
+						<Text style={{color: Colors.text, fontSize: 16}}>{text}</Text>
+						<View
+							style={{
+								flexDirection: "row",
+								justifyContent: "flex-end",
+								alignItems: "center",
+								gap: 20,
+								marginTop: 20
+							}}
+						>
+							<Pressable style={noBtnStyle} onPress={noAction}>
+								<Text style={noTextBtnStyle}>
+									Cancel
+								</Text>
+							</Pressable>
+							<Pressable style={yesBtnStyle} onPress={() => {
+								if (yesAction) yesAction();
+								visibleSetVar(false);
+							}}>
+								<Text style={yesTextBtnStyle}>
+									Yes, I&#39;m sure!
+								</Text>
+							</Pressable>
+						</View>
+					</View>
+				</TouchableWithoutFeedback>
+			</Pressable>
+		</Modal>
+	)
 }
 
 function SyncOptions({isLoading, isBadToken, token, serverStatus, updateStatusFn, setServerOnlineFn}: {
@@ -136,8 +223,18 @@ export default function Settings() {
 	const [serverOnline, setServerOnline] = useState<boolean>(false);
 	const [isBadToken, setIsBadToken] = useState<boolean>(false);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [isDeleteLocalPressed, setIsDeleteLocalPressed] = useState<boolean>(false);
+	const [confModalVisible, setConfModalVisible] = useState(false);
+	const [confModalTitle, setConfModalTitle] = useState<string>("");
+	const [confModalText, setConfModalText] = useState<string>("");
+	const [confModalYesAction, setConfModalYesAction] = useState<() => void>(() => setConfModalVisible(false));
 	const [dbServerToken, setDbServerToken] = useState<string>();
 	const db = useSQLiteContext();
+
+	function resetLocalData() {
+		db.runSync("DELETE FROM payment");
+		ToastAndroid.show("Local data was deleted", ToastAndroid.SHORT);
+	}
 
 	function handleYuanValueSave() {
 		if (!yuanValue || isNaN(Number(yuanValue))) {
@@ -178,7 +275,6 @@ export default function Settings() {
 
 		setIsLoading(true);
 
-		console.log("Requesting connection update");
 		const token = loadServerToken(db);
 		if (!token) {
 			ToastAndroid.show("Bad  token not found", ToastAndroid.SHORT);
@@ -304,11 +400,60 @@ export default function Settings() {
 			</View>
 			<SyncOptions isLoading={isLoading} isBadToken={isBadToken} token={dbServerToken} serverStatus={serverOnline}
 						 setServerOnlineFn={setServerOnline} updateStatusFn={updateServerStatus}/>
+			<Pressable
+				onPressIn={() => setIsDeleteLocalPressed(true)}
+				onPressOut={() => setIsDeleteLocalPressed(false)}
+				style={({pressed}) => [{
+					flexDirection: "row",
+					justifyContent: "center",
+					alignItems: "center",
+					gap: 10,
+					borderWidth: 2,
+					borderRadius: 5,
+					borderColor: Colors.error,
+					backgroundColor: pressed ? Colors.error : "transparent",
+					padding: 10,
+					marginTop: 50,
+				}]}
+				onPress={() => {
+					setConfModalTitle("Delete local data");
+					setConfModalText("Are you sure you wish to delete all the local data?\n\nThis operation is irreversible!");
+					setConfModalYesAction(() => resetLocalData);
+					setConfModalVisible(true);
+				}}
+			>
+				<Eraser color={isDeleteLocalPressed ? Colors.text : Colors.error}/>
+				<Text style={{color: isDeleteLocalPressed ? Colors.text : Colors.error, fontSize: 16}}>
+					Delete local data
+				</Text>
+			</Pressable>
+			<ConfirmationModal visibleVar={confModalVisible} visibleSetVar={setConfModalVisible} title={confModalTitle}
+							   text={confModalText} yesBtnStyle={styles.redConfirmButton}
+							   yesTextBtnStyle={styles.redConfirmationButtonText} yesAction={confModalYesAction}
+							   noAction={() => setConfModalVisible(false)}
+							   noBtnStyle={styles.cancelButton} noTextBtnStyle={styles.cancelButtonText}/>
 		</ScrollView>
 	);
 }
 
 const styles = StyleSheet.create({
+	redConfirmButton: {
+		padding: 10,
+		backgroundColor: Colors.error,
+		borderRadius: 5
+	},
+	redConfirmationButtonText: {
+		fontWeight: "bold",
+		color: Colors.text,
+	},
+	cancelButton: {
+		backgroundColor: "white",
+		padding: 10,
+		borderRadius: 5
+	},
+	cancelButtonText: {
+		fontWeight: "bold",
+	},
 	moneySymbol: {
 		display: "flex",
 		color: Colors.text,

@@ -20,4 +20,7 @@ export const Colors = {
 	paymentTypeFriendUser: "#594b12",
 	paymentTypeDebtToFriend: "#591212",
 	paymentTypeDebtToUser: "#104720",
+	error: "#ef4444",
+	darkError: "#b91c1c",
+	lightError: "#fca5a5"
 } as const;
