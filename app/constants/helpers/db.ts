@@ -1,13 +1,15 @@
 import type {SQLiteDatabase} from "expo-sqlite";
 
-export function loadAndSetYuanValue(db: SQLiteDatabase, setYuanValue: (value: string) => void) {
+export function loadAndSetYuanValue(db: SQLiteDatabase): string {
 	const yuanValueRow = db.getFirstSync<{
 		value: string
 	}>("SELECT value FROM configuration WHERE id = 'yuan_value'");
 
 	if (yuanValueRow && !isNaN(Number(yuanValueRow.value))) {
-		setYuanValue(yuanValueRow.value);
+		return yuanValueRow.value;
 	}
+
+	return "";
 }
 
 export function loadServerToken(db: SQLiteDatabase, setServerToken: ((value: string) => void) | undefined = undefined) {

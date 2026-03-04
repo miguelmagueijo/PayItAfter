@@ -181,18 +181,18 @@ function SyncOptions({isLoading, isBadToken, token, serverStatus, updateStatusFn
 	return (
 		<View style={{marginTop: 20}}>
 			{lastSyncInfo && lastSyncInfo.timestamp > 0 &&
-                <Text style={{color: Colors.text, opacity: 0.5}}>
-                    Sync Version is {lastSyncInfo.version} @&nbsp;
+				<Text style={{color: Colors.text, opacity: 0.5}}>
+					Sync Version is {lastSyncInfo.version} @&nbsp;
 					{lastSyncInfo.date.toLocaleDateString()}&nbsp;
 					{lastSyncInfo.date.toLocaleTimeString("pt-PT", {
 						hour: "2-digit",
 						minute: "2-digit",
 					})}
-                </Text>}
+				</Text>}
 			{lastSyncInfo && lastSyncInfo.timestamp < 0 &&
-                <Text style={{color: Colors.text, opacity: 0.5}}>
-                    Server didn&#39;t sync yet
-                </Text>}
+				<Text style={{color: Colors.text, opacity: 0.5}}>
+					Server didn&#39;t sync yet
+				</Text>}
 			<Pressable
 				disabled={isRefreshing}
 				style={({pressed}) => [{
@@ -302,10 +302,9 @@ export default function Settings() {
 
 	useFocusEffect(
 		useCallback(() => {
-			loadAndSetYuanValue(db, setYuanValue);
+			setYuanValue(loadAndSetYuanValue(db));
 			loadServerToken(db, setServerToken);
 			updateServerStatus();
-			// eslint-disable-next-line react-hooks/exhaustive-deps
 		}, [db])
 	);
 

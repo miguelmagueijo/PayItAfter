@@ -13,7 +13,7 @@ import {
 import {EllipsisVertical, Pencil, Plus, Trash} from "lucide-react-native/icons";
 import {Colors} from "@/constants/theme";
 import {SafeAreaView} from "react-native-safe-area-context";
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useRef, useState} from "react";
 import {DateTimePickerAndroid} from "@react-native-community/datetimepicker";
 import {Swipeable} from "react-native-gesture-handler";
 import {useSQLiteContext} from "expo-sqlite";
@@ -174,14 +174,14 @@ function PaymentItem({payment, openEditModal, openDeleteModal}: {
 				</View>
 				<View>
 					{realTotal > 0 &&
-                        <Text style={{
+						<Text style={{
 							color: Colors.text,
 							fontSize: 10,
 							opacity: 0.5,
 							textAlign: "right"
 						}}>
 							{realTotal} ¥ / 2
-                        </Text>
+						</Text>
 					}
 					<View style={{flexDirection: "row", alignItems: "flex-end", gap: 2.5, justifyContent: "flex-end"}}>
 						<Text style={{fontSize: 20, fontWeight: "bold", color: Colors.text}}>
@@ -213,7 +213,7 @@ export default function Index() {
 	const [paymentTitle, setPaymentTitle] = useState("");
 	const [paymentType, setPaymentType] = useState<PaymentTypeOption>(PAYMENTS_TYPE_MAP.get(DB_PAYMENT_TYPE.USER)!);
 	const [totalSpent, setTotalSpent] = useState(0);
-	const [yuanValue, setYuanValue] = useState<string>();
+	const [yuanValue, setYuanValue] = useState<string>("");
 	const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 	const [selectedPayment, setSelectedPayment] = useState<PaymentData>();
 	const [totalDebt, setTotalDebt] = useState<number>(0);
@@ -338,12 +338,10 @@ export default function Index() {
 
 	useFocusEffect(
 		useCallback(() => {
-			loadAndSetYuanValue(db, setYuanValue);
+			setYuanValue(loadAndSetYuanValue(db));
 			fetchPayments();
 		}, [db])
 	);
-
-	useEffect(fetchPayments, [db, yuanValue]);
 
 	function openDeleteModal(target: PaymentData) {
 		if (!target) {
@@ -582,14 +580,14 @@ export default function Index() {
 				</View>
 			</View>
 			{yuanValue &&
-                <View>
-                    <Text style={{color: Colors.text, fontSize: 10, opacity: 0.5, textAlign: "right", marginTop: 2}}>
-                        Conversion rate: 1€ = {yuanValue}¥
-                    </Text>
-                </View>
+				<View>
+					<Text style={{color: Colors.text, fontSize: 10, opacity: 0.5, textAlign: "right", marginTop: 2}}>
+						Conversion rate: 1€ = {yuanValue}¥
+					</Text>
+				</View>
 			}
-			{totalDebt !== 0 &&
-                <View style={{
+			{yuanValue && totalDebt !== 0 &&
+				<View style={{
 					backgroundColor: totalDebt > 0 ? "#410505" : "#064115",
 					marginTop: 10,
 					paddingHorizontal: 15,
@@ -599,26 +597,26 @@ export default function Index() {
 					alignItems: "center",
 					justifyContent: "space-between"
 				}}>
-                    <Text style={{fontSize: 16, fontWeight: "bold", color: totalDebt > 0 ? "#f69292" : "#93f5ac"}}>
-                        You {totalDebt > 0 ? "owe" : "are owed"}
-                    </Text>
-                    <View>
-                        <Text style={{
+					<Text style={{fontSize: 16, fontWeight: "bold", color: totalDebt > 0 ? "#f69292" : "#93f5ac"}}>
+						You {totalDebt > 0 ? "owe" : "are owed"}
+					</Text>
+					<View>
+						<Text style={{
 							textAlign: "right",
 							fontSize: 20,
 							fontWeight: "bold",
 							color: totalDebt > 0 ? "#f69292" : "#93f5ac",
 						}}>{Math.abs(roundNumber(totalDebt, 2))} ¥</Text>
-                        <Text style={{
+						<Text style={{
 							textAlign: "right",
 							marginTop: -2.5,
 							opacity: 0.25,
 							color: totalDebt > 0 ? "#f69292" : "#93f5ac",
 						}}>
 							{roundNumber(Math.abs(totalDebt) / Number(yuanValue), 2)} €
-                        </Text>
-                    </View>
-                </View>
+						</Text>
+					</View>
+				</View>
 			}
 			<View style={{
 				marginTop: 15,
