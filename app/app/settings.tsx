@@ -18,7 +18,7 @@ import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
 import {Colors} from "@/constants/theme";
 import {loadAndSetYuanValue, loadServerToken} from "@/constants/helpers/db";
-import {Equal, Eraser, RefreshCcw, RotateCcw} from "lucide-react-native/icons";
+import {Equal, Eraser, RefreshCcw, RotateCcw, Trash} from "lucide-react-native/icons";
 import {API_URL, getAuthHeader} from "@/constants/helpers/api";
 
 type LastSyncInfo = {
@@ -101,16 +101,57 @@ function ConfirmationModal({
 	)
 }
 
-function SyncOptions({isLoading, isBadToken, token, serverStatus, updateStatusFn, setServerOnlineFn}: {
+function SyncOptions({
+						 isLoading,
+						 isBadToken,
+						 token,
+						 serverStatus,
+						 updateStatusFn,
+						 setServerOnlineFn,
+						 onDeleteServerAction
+					 }: {
 	isLoading: boolean,
 	isBadToken: boolean,
 	token: string | undefined,
 	serverStatus: boolean,
 	updateStatusFn: () => void,
 	setServerOnlineFn: (isOnline: boolean) => void,
+	onDeleteServerAction: (callback: () => void) => void,
 }) {
 	const [lastSyncInfo, setLastSyncInfo] = useState<LastSyncInfo>();
 	const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+	function requestDeleteServerData() {
+		if (isLoading || isRefreshing) {
+			return;
+		}
+
+		setIsRefreshing(true);
+
+		if (!token) {
+			ToastAndroid.show("Token not found", ToastAndroid.SHORT);
+			setIsRefreshing(false);
+			return;
+		}
+
+		fetch(`${API_URL}/reset`, {
+			headers: {
+				Authorization: getAuthHeader(token),
+			},
+			method: "DELETE",
+		}).then(res => {
+			if (res.ok) {
+				ToastAndroid.show("Server data deleted", ToastAndroid.SHORT);
+			} else {
+				ToastAndroid.show("Could not delete server data. Error: " + res.status, ToastAndroid.SHORT);
+			}
+			updateLastSyncInfo();
+		}).catch(err => {
+			ToastAndroid.show(err.toString(), ToastAndroid.SHORT);
+		}).finally(() => {
+			setTimeout(() => setIsRefreshing(false), 2000);
+		});
+	}
 
 	function updateLastSyncInfo() {
 		if (isRefreshing || !serverStatus || !token) {
@@ -212,6 +253,29 @@ function SyncOptions({isLoading, isBadToken, token, serverStatus, updateStatusFn
 					Refresh connection
 				</Text>
 			</Pressable>
+			<Pressable
+				disabled={isLoading || isRefreshing}
+				style={({pressed}) => [{
+					flexDirection: "row",
+					justifyContent: "center",
+					alignItems: "center",
+					padding: 10,
+					gap: 10,
+					marginTop: 10,
+					backgroundColor: isLoading || isRefreshing ? "gray" : (pressed ? Colors.darkError : Colors.error),
+					borderRadius: 5
+				}]}
+				onPress={() => onDeleteServerAction(requestDeleteServerData)}
+			>
+				<Trash color={isLoading || isRefreshing ? Colors.background : Colors.text}/>
+				<Text style={{
+					color: isLoading || isRefreshing ? Colors.background : Colors.text,
+					fontWeight: "bold",
+					fontSize: 16
+				}}>
+					Delete server data
+				</Text>
+			</Pressable>
 			{/* TODO: create sync button and delete button */}
 		</View>
 	);
@@ -277,7 +341,7 @@ export default function Settings() {
 
 		const token = loadServerToken(db);
 		if (!token) {
-			ToastAndroid.show("Bad  token not found", ToastAndroid.SHORT);
+			ToastAndroid.show("Token not found", ToastAndroid.SHORT);
 			setIsLoading(false);
 			return;
 		}
@@ -298,6 +362,13 @@ export default function Settings() {
 		}).finally(() => {
 			setTimeout(() => setIsLoading(false), 2000);
 		});
+	}
+
+	function onDeleteServerAction(callback: () => void) {
+		setConfModalTitle("Delete server data")
+		setConfModalText("Do you confirm you wish to delete server data (sync)?\n\nThis action is irreversible!")
+		setConfModalYesAction(() => callback);
+		setConfModalVisible(true);
 	}
 
 	useFocusEffect(
@@ -398,7 +469,8 @@ export default function Settings() {
 				</View>
 			</View>
 			<SyncOptions isLoading={isLoading} isBadToken={isBadToken} token={dbServerToken} serverStatus={serverOnline}
-						 setServerOnlineFn={setServerOnline} updateStatusFn={updateServerStatus}/>
+						 setServerOnlineFn={setServerOnline} updateStatusFn={updateServerStatus}
+						 onDeleteServerAction={onDeleteServerAction}/>
 			<Pressable
 				onPressIn={() => setIsDeleteLocalPressed(true)}
 				onPressOut={() => setIsDeleteLocalPressed(false)}
