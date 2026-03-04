@@ -362,7 +362,7 @@ func main() {
 	}
 	fmt.Println("user token:", userToken)
 
-	err = router.Run("0.0.0.0:8900")
+	err = router.Run()
 
 	if err != nil {
 		log.Fatal(err.Error())
