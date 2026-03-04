@@ -153,7 +153,12 @@ func main() {
 	authProtected.DELETE("/reset", func(c *gin.Context) {
 		data, err := getFileStatusData()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			c.JSON(http.StatusContinue, gin.H{"message": err.Error()})
+			return
+		}
+
+		if data.LastSync < 0 {
+			c.JSON(http.StatusOK, gin.H{"message": "reset already made"})
 			return
 		}
 
@@ -357,7 +362,7 @@ func main() {
 	}
 	fmt.Println("user token:", userToken)
 
-	err = router.Run()
+	err = router.Run("0.0.0.0:8900")
 
 	if err != nil {
 		log.Fatal(err.Error())
