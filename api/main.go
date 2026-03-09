@@ -212,7 +212,7 @@ func main() {
 		}
 
 		whoHasNewest := "server"
-		if data.LastSyncVersion < version {
+		if data.LastSyncVersion <= version {
 			whoHasNewest = "client"
 		}
 
