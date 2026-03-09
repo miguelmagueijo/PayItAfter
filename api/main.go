@@ -257,7 +257,7 @@ func main() {
 			return
 		}
 
-		var appDataJson map[string]interface{}
+		var appDataJson json.RawMessage
 		err = json.Unmarshal(appData, &appDataJson)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -266,7 +266,7 @@ func main() {
 			return
 		}
 
-		c.JSON(http.StatusOK, appDataJson)
+		c.JSON(http.StatusOK, map[string]interface{}{"version": fileStatus.LastSyncVersion, "data": appDataJson})
 	})
 
 	authProtected.POST("/upload/:version", func(c *gin.Context) {
