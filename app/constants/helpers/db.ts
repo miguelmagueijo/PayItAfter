@@ -1,6 +1,10 @@
 import type {SQLiteDatabase} from "expo-sqlite";
 
-export function loadAndSetYuanValue(db: SQLiteDatabase): string {
+export function updateDataVersion(db: SQLiteDatabase, newVersion: number) {
+	db.runSync("UPDATE configuration SET value = ? WHERE id = 'sync_version'", newVersion);
+}
+
+export function fetchYuanValue(db: SQLiteDatabase): string {
 	const yuanValueRow = db.getFirstSync<{
 		value: string
 	}>("SELECT value FROM configuration WHERE id = 'yuan_value'");

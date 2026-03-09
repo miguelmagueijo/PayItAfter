@@ -18,7 +18,7 @@ import {DateTimePickerAndroid} from "@react-native-community/datetimepicker";
 import {Swipeable} from "react-native-gesture-handler";
 import {useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
-import {DB_PAYMENT_TYPE, loadAndSetYuanValue} from "@/constants/helpers/db";
+import {DB_PAYMENT_TYPE, fetchYuanValue} from "@/constants/helpers/db";
 import {LinearGradient} from "expo-linear-gradient";
 
 type PaymentData = {
@@ -268,18 +268,18 @@ export default function Index() {
 				paymentTitle, paymentValueNumber, paymentType.value, paymentDate.getTime());
 			ToastAndroid.show("Payment created", ToastAndroid.SHORT);
 			setModalVisible(false);
-			fetchPayments();
+			fetchPayments(yuanValue);
 		} else {
 			await db.runAsync("UPDATE payment SET title = ?, total = ?, type = ?, made_on = ? WHERE id = ?",
 				paymentTitle, paymentValueNumber, paymentType.value, paymentDate.getTime(), selectedPayment?.id);
 			ToastAndroid.show("Payment updated", ToastAndroid.SHORT);
 			setModalVisible(false);
-			fetchPayments();
+			fetchPayments(yuanValue);
 		}
 	}
 
-	function fetchPayments() {
-		if (!yuanValue || isLoadingPayments) {
+	function fetchPayments(yuan: string) {
+		if (!yuan || isLoadingPayments) {
 			return;
 		}
 
@@ -338,8 +338,8 @@ export default function Index() {
 
 	useFocusEffect(
 		useCallback(() => {
-			setYuanValue(loadAndSetYuanValue(db));
-			fetchPayments();
+			setYuanValue(fetchYuanValue(db));
+			fetchPayments(yuanValue);
 		}, [db])
 	);
 
@@ -405,7 +405,7 @@ export default function Index() {
 									if (selectedPayment) {
 										db.runSync("DELETE FROM payment WHERE ID = ?", selectedPayment.id);
 										ToastAndroid.show("Payment deleted", ToastAndroid.SHORT);
-										fetchPayments();
+										fetchPayments(yuanValue);
 										setDeleteModalVisible(false);
 										setSelectedPayment(undefined);
 									}

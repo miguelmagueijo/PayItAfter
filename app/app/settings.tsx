@@ -14,11 +14,11 @@ import {
 } from "react-native";
 import {useCallback, useEffect, useState} from "react";
 import {Check} from "lucide-react-native";
-import {useSQLiteContext} from "expo-sqlite";
+import {SQLiteDatabase, useSQLiteContext} from "expo-sqlite";
 import {useFocusEffect} from "expo-router";
 import {Colors} from "@/constants/theme";
-import {loadAndSetYuanValue, loadServerToken} from "@/constants/helpers/db";
-import {Equal, Eraser, RefreshCcw, RotateCcw, Trash} from "lucide-react-native/icons";
+import {fetchYuanValue, loadServerToken, updateDataVersion} from "@/constants/helpers/db";
+import {CloudSync, Equal, Eraser, RefreshCcw, RotateCcw, Trash} from "lucide-react-native/icons";
 import {API_URL, getAuthHeader} from "@/constants/helpers/api";
 
 type LastSyncInfo = {
@@ -102,6 +102,7 @@ function ConfirmationModal({
 }
 
 function SyncOptions({
+						 db,
 						 isLoading,
 						 isBadToken,
 						 token,
@@ -110,6 +111,7 @@ function SyncOptions({
 						 setServerOnlineFn,
 						 onDeleteServerAction
 					 }: {
+	db: SQLiteDatabase,
 	isLoading: boolean,
 	isBadToken: boolean,
 	token: string | undefined,
@@ -180,6 +182,123 @@ function SyncOptions({
 		});
 	}
 
+	async function uploadDataToServer(version: number) {
+		const rows = await db.getAllAsync<{
+			id: number,
+			title: string,
+			total: number,
+			type: string,
+			made_on: number
+		}>("SELECT id, title, total, type, made_on FROM payment");
+
+		const res = await fetch(`${API_URL}/upload/${version}`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: getAuthHeader(token!),
+			},
+			body: JSON.stringify(rows)
+		});
+
+		if (!res.ok) {
+			throw new Error("Error uploading server data");
+		}
+
+		updateDataVersion(db, version + 1);
+		ToastAndroid.show("Server data was updated", ToastAndroid.SHORT);
+	}
+
+	async function downloadDataFromServer() {
+		const res = await fetch(`${API_URL}/download`, {
+			method: "GET",
+			headers: {
+				Authorization: getAuthHeader(token!),
+			},
+		});
+
+		if (!res.ok) {
+			throw new Error("Error downloading server data");
+		}
+
+		const resData = await res.json();
+
+		updateDataVersion(db, resData.version + 1);
+
+		await db.withExclusiveTransactionAsync(async () => {
+			await db.execAsync("DELETE FROM payment");
+
+			for (const row of resData.data) {
+				await db.runAsync("INSERT INTO payment (id, title, total, type, made_on) VALUES (?,?,?,?,?)", row.id, row.title, row.total, row.type, row.made_on);
+			}
+		});
+
+		ToastAndroid.show("Local data was updated", ToastAndroid.SHORT);
+	}
+
+	async function syncData() {
+		if (isLoading || isRefreshing) {
+			return;
+		}
+
+		setIsRefreshing(true);
+
+		if (!token) {
+			ToastAndroid.show("Token not found", ToastAndroid.SHORT);
+			setIsRefreshing(false);
+			return;
+		}
+
+		const versionRow = await db.getFirstAsync<{
+			value: string
+		}>("SELECT value FROM configuration WHERE id = 'sync_version'");
+
+		if (!versionRow) {
+			ToastAndroid.show("Version in database not found, please reset local data", ToastAndroid.SHORT);
+			setIsRefreshing(false);
+			return;
+		}
+
+		const versionNum = Number(versionRow.value);
+		if (isNaN(versionNum)) {
+			ToastAndroid.show("Version in database is invalid, please reset local data", ToastAndroid.SHORT);
+			setIsRefreshing(false);
+			return;
+		}
+		console.log(versionNum);
+
+		try {
+			const res = await fetch(`${API_URL}/sync-state/${versionNum}`, {
+				method: "GET",
+				headers: {
+					Authorization: getAuthHeader(token),
+				}
+			});
+
+			if (!res.ok) {
+				throw new Error("No sync state available");
+			}
+
+			const resData = await res.json();
+
+			if (resData.whoHasNewest === "server") {
+				await downloadDataFromServer();
+			} else {
+				await uploadDataToServer(versionNum);
+			}
+		} catch (e) {
+			if (e && e.toString) {
+				ToastAndroid.show(e.toString(), ToastAndroid.SHORT);
+			} else {
+				ToastAndroid.show("Something went wrong trying to sync data", ToastAndroid.SHORT);
+			}
+			return;
+		} finally {
+			setIsRefreshing(false);
+		}
+
+		updateLastSyncInfo();
+	}
+
 	useEffect(() => {
 		updateLastSyncInfo();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -235,11 +354,13 @@ function SyncOptions({
 					Server didn&#39;t sync yet
 				</Text>}
 			<Pressable
-				disabled={isRefreshing}
+				disabled={isLoading || isRefreshing}
 				style={({pressed}) => [{
 					padding: 10,
 					marginTop: 10,
-					backgroundColor: isRefreshing ? "gray" : (pressed ? Colors.accent : Colors.primary),
+					borderColor: isRefreshing ? "gray" : (pressed ? Colors.accent : Colors.primary),
+					borderWidth: 2,
+					backgroundColor: isRefreshing ? "gray" : "transparent",
 					borderRadius: 5,
 					flexDirection: "row",
 					alignItems: "center",
@@ -248,9 +369,32 @@ function SyncOptions({
 				}]}
 				onPress={updateLastSyncInfo}
 			>
-				<RefreshCcw/>
-				<Text style={{fontWeight: "bold", fontSize: 16}}>
+				<RefreshCcw color={isLoading || isRefreshing ? "black" : Colors.primary}/>
+				<Text style={{
+					fontWeight: "bold",
+					fontSize: 16,
+					color: isLoading || isRefreshing ? "black" : Colors.primary
+				}}>
 					Refresh connection
+				</Text>
+			</Pressable>
+			<Pressable
+				disabled={isLoading || isRefreshing}
+				style={({pressed}) => [{
+					padding: 10,
+					marginTop: 10,
+					backgroundColor: isLoading || isRefreshing ? "gray" : (pressed ? Colors.accent : Colors.primary),
+					borderRadius: 5,
+					flexDirection: "row",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: 10
+				}]}
+				onPress={syncData}
+			>
+				<CloudSync/>
+				<Text style={{fontWeight: "bold", fontSize: 16}}>
+					SYNC
 				</Text>
 			</Pressable>
 			<Pressable
@@ -297,6 +441,7 @@ export default function Settings() {
 
 	function resetLocalData() {
 		db.runSync("DELETE FROM payment");
+		updateDataVersion(db, 1);
 		ToastAndroid.show("Local data was deleted", ToastAndroid.SHORT);
 	}
 
@@ -373,7 +518,7 @@ export default function Settings() {
 
 	useFocusEffect(
 		useCallback(() => {
-			setYuanValue(loadAndSetYuanValue(db));
+			setYuanValue(fetchYuanValue(db));
 			loadServerToken(db, setServerToken);
 			updateServerStatus();
 		}, [db])
@@ -468,7 +613,8 @@ export default function Settings() {
 					</Pressable>
 				</View>
 			</View>
-			<SyncOptions isLoading={isLoading} isBadToken={isBadToken} token={dbServerToken} serverStatus={serverOnline}
+			<SyncOptions db={db} isLoading={isLoading} isBadToken={isBadToken} token={dbServerToken}
+						 serverStatus={serverOnline}
 						 setServerOnlineFn={setServerOnline} updateStatusFn={updateServerStatus}
 						 onDeleteServerAction={onDeleteServerAction}/>
 			<Pressable
@@ -487,7 +633,7 @@ export default function Settings() {
 					marginTop: 50,
 				}]}
 				onPress={() => {
-					setConfModalTitle("Delete local data");
+					setConfModalTitle("Reset local data");
 					setConfModalText("Are you sure you wish to delete all the local data?\n\nThis operation is irreversible!");
 					setConfModalYesAction(() => resetLocalData);
 					setConfModalVisible(true);
@@ -495,7 +641,7 @@ export default function Settings() {
 			>
 				<Eraser color={isDeleteLocalPressed ? Colors.text : Colors.error}/>
 				<Text style={{color: isDeleteLocalPressed ? Colors.text : Colors.error, fontSize: 16}}>
-					Delete local data
+					Reset local data
 				</Text>
 			</Pressable>
 			<ConfirmationModal visibleVar={confModalVisible} visibleSetVar={setConfModalVisible} title={confModalTitle}
