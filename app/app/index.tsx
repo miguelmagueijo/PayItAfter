@@ -17,9 +17,10 @@ import {useCallback, useRef, useState} from "react";
 import {DateTimePickerAndroid} from "@react-native-community/datetimepicker";
 import {Swipeable} from "react-native-gesture-handler";
 import {useSQLiteContext} from "expo-sqlite";
-import {useFocusEffect} from "expo-router";
 import {DB_PAYMENT_TYPE, fetchYuanValue} from "@/constants/helpers/db";
 import {LinearGradient} from "expo-linear-gradient";
+import {useActiveEffect} from "@/constants/helpers/effects";
+import {KeyboardAvoidingView} from "react-native-keyboard-controller";
 
 type PaymentData = {
 	id: number;
@@ -268,18 +269,18 @@ export default function Index() {
 				paymentTitle, paymentValueNumber, paymentType.value, paymentDate.getTime());
 			ToastAndroid.show("Payment created", ToastAndroid.SHORT);
 			setModalVisible(false);
-			fetchPayments(yuanValue);
+			fetchPayments();
 		} else {
 			await db.runAsync("UPDATE payment SET title = ?, total = ?, type = ?, made_on = ? WHERE id = ?",
 				paymentTitle, paymentValueNumber, paymentType.value, paymentDate.getTime(), selectedPayment?.id);
 			ToastAndroid.show("Payment updated", ToastAndroid.SHORT);
 			setModalVisible(false);
-			fetchPayments(yuanValue);
+			fetchPayments();
 		}
 	}
 
-	function fetchPayments(yuan: string) {
-		if (!yuan || isLoadingPayments) {
+	function fetchPayments() {
+		if (!yuanValue || isLoadingPayments) {
 			return;
 		}
 
@@ -293,11 +294,6 @@ export default function Index() {
 			r.made_on = new Date(r.made_on);
 			// @ts-ignore
 			r.by_user = r.by_user === "true";
-
-			// @ts-ignore
-			if ([DB_PAYMENT_TYPE.USER, DB_PAYMENT_TYPE.USER_PAYS_FRIEND].includes(r.type)) {
-				totalSpent += r.value;
-			}
 
 			switch (r.type) {
 				case DB_PAYMENT_TYPE.USER:
@@ -336,10 +332,11 @@ export default function Index() {
 		setIsLoadingPayments(false);
 	}
 
-	useFocusEffect(
+	useActiveEffect(
 		useCallback(() => {
-			setYuanValue(fetchYuanValue(db));
-			fetchPayments(yuanValue);
+			const yuanVal = fetchYuanValue(db);
+			setYuanValue(yuanVal);
+			fetchPayments();
 		}, [db])
 	);
 
@@ -405,7 +402,7 @@ export default function Index() {
 									if (selectedPayment) {
 										db.runSync("DELETE FROM payment WHERE ID = ?", selectedPayment.id);
 										ToastAndroid.show("Payment deleted", ToastAndroid.SHORT);
-										fetchPayments(yuanValue);
+										fetchPayments();
 										setDeleteModalVisible(false);
 										setSelectedPayment(undefined);
 									}
@@ -417,7 +414,7 @@ export default function Index() {
 					</TouchableWithoutFeedback>
 				</Pressable>
 			</Modal>
-			<Modal visible={paymentTypeModalVisibility} transparent
+			<Modal animationType={"fade"} visible={paymentTypeModalVisibility} transparent
 				   onRequestClose={() => setPaymentTypeModalVisibility(false)}>
 				<Pressable style={{backgroundColor: "rgba(0,0,0,0.75)", flex: 1}}
 						   onPress={() => setPaymentTypeModalVisibility(false)}>
@@ -454,99 +451,106 @@ export default function Index() {
 			</Modal>
 			<Modal animationType="slide" visible={modalVisible} transparent
 				   onRequestClose={() => setModalVisible(false)}>
-				<Pressable style={{flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)"}}
-						   onPress={() => setModalVisible(false)}/>
-				<View>
-					<ScrollView keyboardShouldPersistTaps="handled"
-								style={{backgroundColor: Colors.brightBackground, padding: 25}}>
-						<Text style={{color: Colors.text, fontSize: 26, fontWeight: "bold"}}>
-							{!selectedPayment ? "New payment" : "Edit payment"}
-						</Text>
-						<TextInput placeholder="Title" value={paymentTitle} onChangeText={setPaymentTitle}
-								   placeholderTextColor="rgba(248, 234, 239, 0.4)"
-								   style={[styles.baseModalField, styles.modalFieldColors, {marginTop: 20}]}/>
-						<View style={{
-							display: "flex",
-							flexDirection: "row",
-							gap: 15,
-							justifyContent: "space-between",
-							marginTop: 20
-						}}>
-							<View>
-								<View style={{display: "flex", flexDirection: "row", gap: 10}}>
-									<Pressable style={styles.modalFieldColors} onPress={() => showCalendarMode("date")}>
-										<Text style={styles.baseModalField}>{paymentDate.toLocaleDateString()}</Text>
-									</Pressable>
-									<Pressable style={styles.modalFieldColors} onPress={() => showCalendarMode("time")}>
-										<Text style={styles.baseModalField}>
-											{getCleanHours(paymentDate)}
-										</Text>
-									</Pressable>
+				<KeyboardAvoidingView behavior={"height"} style={{flex: 1}}>
+					<Pressable style={{flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)"}}
+							   onPress={() => setModalVisible(false)}/>
+					<SafeAreaView>
+						<ScrollView keyboardShouldPersistTaps="handled"
+									style={{backgroundColor: Colors.brightBackground, padding: 25}}>
+							<Text style={{color: Colors.text, fontSize: 26, fontWeight: "bold"}}>
+								{!selectedPayment ? "New payment" : "Edit payment"}
+							</Text>
+							<TextInput placeholder="Title" value={paymentTitle} onChangeText={setPaymentTitle}
+									   placeholderTextColor="rgba(248, 234, 239, 0.4)"
+									   style={[styles.baseModalField, styles.modalFieldColors, {marginTop: 20}]}/>
+							<View style={{
+								display: "flex",
+								flexDirection: "row",
+								gap: 15,
+								justifyContent: "space-between",
+								marginTop: 20
+							}}>
+								<View>
+									<View style={{display: "flex", flexDirection: "row", gap: 10}}>
+										<Pressable style={styles.modalFieldColors}
+												   onPress={() => showCalendarMode("date")}>
+											<Text style={styles.baseModalField}>
+												{paymentDate.toLocaleDateString()}
+											</Text>
+										</Pressable>
+										<Pressable style={styles.modalFieldColors}
+												   onPress={() => showCalendarMode("time")}>
+											<Text style={styles.baseModalField}>
+												{getCleanHours(paymentDate)}
+											</Text>
+										</Pressable>
+									</View>
+								</View>
+								<View style={[styles.modalFieldColors, {
+									flexDirection: "row",
+									backgroundColor: Colors.softerSecondary,
+									alignItems: "center",
+									flex: 1
+								}]}>
+									<TextInput inputMode="decimal" placeholder="0"
+											   placeholderTextColor="rgba(248, 234, 239, 0.4)"
+											   style={[styles.baseModalField, {
+												   flex: 1,
+												   backgroundColor: Colors.background,
+												   borderTopLeftRadius: 3,
+												   borderBottomLeftRadius: 3,
+												   textAlign: "right",
+											   }]}
+											   value={paymentValue}
+											   onChangeText={(value) => setPaymentValue(value)}/>
+									<Text style={[styles.baseModalField, {
+										fontWeight: "bold"
+									}]}>
+										¥
+									</Text>
 								</View>
 							</View>
-							<View style={[styles.modalFieldColors, {
-								flexDirection: "row",
-								backgroundColor: Colors.softerSecondary,
-								alignItems: "center",
-								flex: 1
-							}]}>
-								<TextInput inputMode="decimal" placeholder="0"
-										   placeholderTextColor="rgba(248, 234, 239, 0.4)"
-										   style={[styles.baseModalField, {
-											   flex: 1,
-											   backgroundColor: Colors.background,
-											   borderTopLeftRadius: 3,
-											   borderBottomLeftRadius: 3,
-											   textAlign: "right",
-										   }]}
-										   value={paymentValue}
-										   onChangeText={(value) => setPaymentValue(value)}/>
-								<Text style={[styles.baseModalField, {
-									fontWeight: "bold"
-								}]}>
-									¥
-								</Text>
+							<View style={{marginTop: 20}}>
+								<Pressable
+									style={[styles.modalFieldColors, {
+										flexDirection: "row",
+										alignItems: "center",
+										justifyContent: "space-between",
+										padding: 10,
+										backgroundColor: paymentType.color
+									}]}
+									onPress={() => setPaymentTypeModalVisibility(true)}
+								>
+									<Text style={{color: Colors.text}}>{paymentType.text}</Text>
+									<EllipsisVertical color={Colors.text} strokeWidth={2}/>
+								</Pressable>
 							</View>
-						</View>
-						<View style={{marginTop: 20}}>
-							<Pressable
-								style={[styles.modalFieldColors, {
-									flexDirection: "row",
-									alignItems: "center",
-									justifyContent: "space-between",
-									padding: 10,
-									backgroundColor: paymentType.color
-								}]}
-								onPress={() => setPaymentTypeModalVisibility(true)}
-							>
-								<Text style={{color: Colors.text}}>{paymentType.text}</Text>
-								<EllipsisVertical color={Colors.text} strokeWidth={2}/>
-							</Pressable>
-						</View>
-						<Pressable style={({pressed}) => [{
-							marginTop: 35,
-							backgroundColor: pressed ? Colors.accent : Colors.primary,
-							borderRadius: 5,
-							padding: 10,
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "center",
-							gap: 5
-						}]} onPress={handleModalSubmit}>
-							{!selectedPayment ? <Plus strokeWidth={4} size={18} color={Colors.background}/> :
-								<Pencil strokeWidth={2} size={18} color={Colors.background}/>}
+							<Pressable style={({pressed}) => [{
+								marginTop: 35,
+								backgroundColor: pressed ? Colors.accent : Colors.primary,
+								borderRadius: 5,
+								padding: 10,
+								flexDirection: "row",
+								alignItems: "center",
+								justifyContent: "center",
+								gap: 5
+							}]} onPress={handleModalSubmit}>
+								{!selectedPayment ?
+									<Plus strokeWidth={4} size={18} color={Colors.background}/> :
+									<Pencil strokeWidth={2} size={18} color={Colors.background}/>}
 
-							<Text style={{
-								color: Colors.background,
-								fontWeight: "bold",
-								textAlign: "center",
-								fontSize: 16
-							}}>
-								{!selectedPayment ? "Create new" : "Edit"}
-							</Text>
-						</Pressable>
-					</ScrollView>
-				</View>
+								<Text style={{
+									color: Colors.background,
+									fontWeight: "bold",
+									textAlign: "center",
+									fontSize: 16
+								}}>
+									{!selectedPayment ? "Create new" : "Edit"}
+								</Text>
+							</Pressable>
+						</ScrollView>
+					</SafeAreaView>
+				</KeyboardAvoidingView>
 			</Modal>
 
 			<View style={{

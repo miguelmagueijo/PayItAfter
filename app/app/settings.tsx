@@ -518,7 +518,8 @@ export default function Settings() {
 
 	useFocusEffect(
 		useCallback(() => {
-			setYuanValue(fetchYuanValue(db));
+			const yuanVal = fetchYuanValue(db);
+			setYuanValue(yuanVal);
 			loadServerToken(db, setServerToken);
 			updateServerStatus();
 		}, [db])
