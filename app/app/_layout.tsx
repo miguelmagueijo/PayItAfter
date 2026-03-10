@@ -7,6 +7,8 @@ import {DrawerContentComponentProps, DrawerContentScrollView, DrawerItemList} fr
 import {Text, View} from "react-native";
 import {Colors} from "@/constants/theme";
 import {NO_TOKEN_VALUE} from "@/constants/helpers/db";
+import {SafeAreaProvider} from "react-native-safe-area-context";
+import {KeyboardProvider} from "react-native-keyboard-controller";
 
 export async function handleDbInit(db: SQLiteDatabase) {
 	const DB_VERSION = 5;
@@ -60,28 +62,32 @@ export default function RootLayout() {
 		<ThemeProvider value={DarkTheme}>
 			<SQLiteProvider databaseName="data.db" onInit={handleDbInit}>
 				<GestureHandlerRootView style={{flex: 1}}>
-					<Drawer
-						screenOptions={{
-							drawerActiveBackgroundColor: Colors.dark,
-							drawerActiveTintColor: Colors.text,
-							drawerStyle: {backgroundColor: Colors.background},
-							headerTintColor: Colors.text,
-							headerStyle: {backgroundColor: Colors.background},
-							drawerHideStatusBarOnOpen: true
-						}}
-						drawerContent={CustomDrawerContent}
-					>
-						<Drawer.Screen name="index" options={{
-							drawerLabel: "Home",
-							title: "Home",
-							drawerIcon: ({color, size}) => (<House color={color} size={size}/>)
-						}}/>
-						<Drawer.Screen name="settings" options={{
-							drawerLabel: "Settings",
-							title: "Settings",
-							drawerIcon: ({color, size}) => (<Settings color={color} size={size}/>)
-						}}/>
-					</Drawer>
+					<SafeAreaProvider>
+						<KeyboardProvider>
+							<Drawer
+								screenOptions={{
+									drawerActiveBackgroundColor: Colors.dark,
+									drawerActiveTintColor: Colors.text,
+									drawerStyle: {backgroundColor: Colors.background},
+									headerTintColor: Colors.text,
+									headerStyle: {backgroundColor: Colors.background},
+									drawerHideStatusBarOnOpen: true
+								}}
+								drawerContent={CustomDrawerContent}
+							>
+								<Drawer.Screen name="index" options={{
+									drawerLabel: "Home",
+									title: "Home",
+									drawerIcon: ({color, size}) => (<House color={color} size={size}/>)
+								}}/>
+								<Drawer.Screen name="settings" options={{
+									drawerLabel: "Settings",
+									title: "Settings",
+									drawerIcon: ({color, size}) => (<Settings color={color} size={size}/>)
+								}}/>
+							</Drawer>
+						</KeyboardProvider>
+					</SafeAreaProvider>
 				</GestureHandlerRootView>
 			</SQLiteProvider>
 		</ThemeProvider>
