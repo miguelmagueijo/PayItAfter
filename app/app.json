@@ -16,6 +16,7 @@
 				"monochromeImage": "./assets/images/android-icon-monochrome.png"
 			},
 			"package": "pt.miguelmagueijo.payitafter",
+			"softwareKeyboardLayoutMode": "pan",
 			"predictiveBackGestureEnabled": false
 		},
 		"web": {
