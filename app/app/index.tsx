@@ -10,7 +10,7 @@ import {
 	TouchableWithoutFeedback,
 	View
 } from "react-native";
-import {EllipsisVertical, Pencil, Plus, Trash} from "lucide-react-native/icons";
+import {EllipsisVertical, Pencil, Plus, RefreshCcw, Trash} from "lucide-react-native/icons";
 import {Colors} from "@/constants/theme";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {useCallback, useRef, useState} from "react";
@@ -280,7 +280,7 @@ export default function Index() {
 	}
 
 	function fetchPayments() {
-		if (!yuanValue || isLoadingPayments) {
+		if (isLoadingPayments) {
 			return;
 		}
 
@@ -329,7 +329,7 @@ export default function Index() {
 		setTotalSpent(totalSpent);
 		setTotalDebt(totalDebt);
 		setPayments(result);
-		setIsLoadingPayments(false);
+		setTimeout(() => setIsLoadingPayments(false), 500);
 	}
 
 	useActiveEffect(
@@ -625,26 +625,42 @@ export default function Index() {
 			<View style={{
 				marginTop: 15,
 				flexDirection: "row",
-				justifyContent: "space-between",
 				alignItems: "center"
 			}}>
 				<Text style={{color: Colors.text, fontSize: 26, fontWeight: "bold"}}>
 					Payments
 				</Text>
-				<Pressable
-					style={({pressed}) => [{
-						backgroundColor: pressed ? Colors.accent : Colors.brighterPrimary,
-						alignItems: "center",
-						borderRadius: 5,
-						flexDirection: "row",
-						paddingHorizontal: 5,
-						paddingVertical: 5,
-						gap: 3
-					}]}
-					onPress={() => handleModalOpen()}
-				>
-					<Plus strokeWidth={4}/>
-				</Pressable>
+				<View
+					style={{flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flex: 1, gap: 10}}>
+					<Pressable
+						disabled={isLoadingPayments}
+						style={({pressed}) => [{
+							backgroundColor: isLoadingPayments ? "gray" : (pressed ? Colors.accent : Colors.brighterPrimary),
+							alignItems: "center",
+							borderRadius: 5,
+							flexDirection: "row",
+							paddingHorizontal: 5,
+							paddingVertical: 5,
+						}]}
+						onPress={() => fetchPayments()}
+					>
+						<RefreshCcw strokeWidth={2}/>
+					</Pressable>
+					<Pressable
+						style={({pressed}) => [{
+							backgroundColor: pressed ? Colors.accent : Colors.brighterPrimary,
+							alignItems: "center",
+							borderRadius: 5,
+							flexDirection: "row",
+							paddingHorizontal: 5,
+							paddingVertical: 5,
+							gap: 3
+						}]}
+						onPress={() => handleModalOpen()}
+					>
+						<Plus strokeWidth={4}/>
+					</Pressable>
+				</View>
 			</View>
 			<FlatList style={{marginVertical: 10}} data={payments}
 					  ListEmptyComponent={
