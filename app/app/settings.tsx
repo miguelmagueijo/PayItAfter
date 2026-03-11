@@ -121,6 +121,7 @@ function SyncOptions({
 	onDeleteServerAction: (callback: () => void) => void,
 }) {
 	const [lastSyncInfo, setLastSyncInfo] = useState<LastSyncInfo>();
+	const [dbCurrVersion, setDbCurrVersion] = useState<string>("");
 	const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
 	function requestDeleteServerData() {
@@ -175,6 +176,16 @@ function SyncOptions({
 			return response.json();
 		}).then((data) => {
 			setLastSyncInfo({...data, date: new Date(data.timestamp * 1000)});
+
+			const versionRow = db.getFirstSync<{
+				value: string
+			}>("SELECT value FROM configuration WHERE id = 'sync_version'");
+
+			if (!versionRow) {
+				ToastAndroid.show("Version in database not found, please reset local data", ToastAndroid.SHORT);
+			} else {
+				setDbCurrVersion(versionRow.value);
+			}
 		}).catch(() => {
 			setServerOnlineFn(false);
 		}).finally(() => {
@@ -264,7 +275,6 @@ function SyncOptions({
 			setIsRefreshing(false);
 			return;
 		}
-		console.log(versionNum);
 
 		try {
 			const res = await fetch(`${API_URL}/sync-state/${versionNum}`, {
@@ -349,6 +359,7 @@ function SyncOptions({
 						minute: "2-digit",
 					})}
 				</Text>}
+			{dbCurrVersion && <Text style={{color: Colors.text, opacity: 0.5}}>Local version is {dbCurrVersion}</Text>}
 			{lastSyncInfo && lastSyncInfo.timestamp < 0 &&
 				<Text style={{color: Colors.text, opacity: 0.5}}>
 					Server didn&#39;t sync yet
