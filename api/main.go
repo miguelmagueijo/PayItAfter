@@ -135,13 +135,15 @@ func authMiddleware() gin.HandlerFunc {
 func main() {
 	router := gin.Default()
 
-	router.GET("/status", func(c *gin.Context) {
+	apiGroup := router.Group("/api")
+
+	apiGroup.GET("/status", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "ok",
 		})
 	})
 
-	authProtected := router.Group("/")
+	authProtected := apiGroup.Group("/")
 	authProtected.Use(authMiddleware())
 
 	authProtected.GET("/check", func(c *gin.Context) {
